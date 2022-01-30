@@ -1,0 +1,131 @@
+﻿<Window x:Class="PCLauncher.Desktop"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="1280" Height="720"
+		WindowStyle="None"
+        WindowState="Maximized"
+		ResizeMode="NoResize"
+		ShowInTaskbar="False"
+        ShowActivated="True"
+		Activated="Window_Activated"
+		Deactivated="Window_Deactivated"
+		Closing="Window_Closing"
+		Closed="Window_Closed"
+       >
+	
+	<Window.Resources>
+		<!-- Template for Desktop Icon -->
+		<Style x:Key="iconTemplate" TargetType="{x:Type Button}">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type Button}">
+						<Image x:Name="image" Source="/Resources/Windows.ico"
+					  Margin="10,10,10,10"/>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+			<Style.Triggers>
+				<Trigger Property="IsMouseOver" Value="True">
+					<Trigger.Setters>
+						<Setter Property="Background" Value="Red"/>
+					</Trigger.Setters>
+				</Trigger>
+
+				<Trigger Property="IsMouseOver" Value="False">
+					<Trigger.Setters>
+						<Setter Property="Background" Value="Green"/>
+					</Trigger.Setters>
+				</Trigger>
+			</Style.Triggers>
+		</Style>
+	</Window.Resources>
+	
+	<Grid>
+		<Image Name="wallPaper" Source="Resources/ocean.jpg"/>
+
+		<Grid Name="iconGrid">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+			</Grid.RowDefinitions>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="1*"/>
+			</Grid.ColumnDefinitions>
+
+			<Button Name="iconYoutube"
+					Grid.Row="2"
+					Grid.Column="3"
+					Click="Click_Youtube_Icon"
+					Style="{StaticResource iconTemplate}"/>
+			
+			<Button Name="iconSearch"
+					Grid.Row="2"
+					Grid.Column="4"
+					Click="Click_Search_Icon"
+					Style="{StaticResource iconTemplate}"/>
+
+			<Button Name="iconTV"
+					Grid.Row="2"
+					Grid.Column="5"
+					Click="Click_TV_Icon"
+					Style="{StaticResource iconTemplate}"/>
+
+			<Button Name="iconVideo"
+					Grid.Row="3"
+					Grid.Column="3"
+					Click="Click_Video_Icon"
+					Style="{StaticResource iconTemplate}"/>
+
+			<Button Name="iconPhoto"
+					Grid.Row="3"
+					Grid.Column="4"
+					Click="Click_Photo_Icon"
+					Style="{StaticResource iconTemplate}"/>
+
+			<Button Name="iconGame"
+					Grid.Row="3"
+					Grid.Column="5"
+					Click="Click_Game_Icon"
+					Style="{StaticResource iconTemplate}"/>
+
+			<Button Name="iconWindows"
+					Grid.Row="5"
+					Grid.Column="0"
+					Click="Click_Windows_Icon"
+					Style="{StaticResource iconTemplate}"/>
+		</Grid>
+
+		<!-- X Button Popup -->
+		<Popup
+			Name="xButton"
+			IsOpen="False"
+			Placement="Absolute"
+			HorizontalOffset="100000"
+			Width="100"
+			Height="100"
+			>
+
+			<Button
+				Click="Click_X"
+				BorderThickness="0"
+				>
+				<Image Source="/Resources/close.png"/>
+			</Button>
+		</Popup>
+	</Grid>
+</Window>

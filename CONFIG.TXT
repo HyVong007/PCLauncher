@@ -1,0 +1,11 @@
+﻿YoutubeExePath=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe
+YoutubeArgument=www.youtube.com
+SearchExePath=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe
+SearchArgument=www.google.com
+TVExePath=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe
+TVArgument=www.netnews.vn
+VideoPath=D:\Desktop\Video
+PhotoPath=D:\Desktop\Photo
+SlideshowPath=D:\Desktop\Photo
+SlideshowDelay=2000
+SlideshowRandom=true

@@ -5,6 +5,114 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <StartupObject>PCLauncher.App</StartupObject>
+    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+    <UseWindowsForms>True</UseWindowsForms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="CONFIG.TXT" />
+    <None Remove="Games\Nestopia\7zxa.dll" />
+    <None Remove="Games\Nestopia\changelog.txt" />
+    <None Remove="Games\Nestopia\copying.txt" />
+    <None Remove="Games\Nestopia\games\tank.nes" />
+    <None Remove="Games\Nestopia\kailleraclient.dll" />
+    <None Remove="Games\Nestopia\language\english.nlg" />
+    <None Remove="Games\Nestopia\nestopia.exe" />
+    <None Remove="Games\Nestopia\nestopia.xml" />
+    <None Remove="Games\Nestopia\readme.html" />
+    <None Remove="Games\Nestopia\schemadb.xsd" />
+    <None Remove="Games\Nestopia\schemaromset.xsd" />
+    <None Remove="Games\Nestopia\unrar.dll" />
+    <None Remove="Resources\close.png" />
+    <None Remove="Resources\error.wav" />
+    <None Remove="Resources\facebook.png" />
+    <None Remove="Resources\game tank.png" />
+    <None Remove="Resources\game.png" />
+    <None Remove="Resources\microphone.png" />
+    <None Remove="Resources\ocean.jpg" />
+    <None Remove="Resources\photo.png" />
+    <None Remove="Resources\search.png" />
+    <None Remove="Resources\setting.png" />
+    <None Remove="Resources\TV.png" />
+    <None Remove="Resources\video.png" />
+    <None Remove="Resources\waiting.gif" />
+    <None Remove="Resources\Windows.ico" />
+    <None Remove="Resources\Youtube.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="CONFIG.TXT">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\7zxa.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\changelog.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\copying.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\games\tank.nes">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\kailleraclient.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\language\english.nlg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\nestopia.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\nestopia.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\readme.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\schemadb.xsd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\schemaromset.xsd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Games\Nestopia\unrar.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\game tank.png" />
+    <Resource Include="Resources\icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\close.png" />
+    <Content Include="Resources\error.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Resource Include="Resources\facebook.png" />
+    <Resource Include="Resources\game.png" />
+    <Resource Include="Resources\photo.png" />
+    <Resource Include="Resources\microphone.png" />
+    <Resource Include="Resources\ocean.jpg" />
+    <Resource Include="Resources\search.png" />
+    <Resource Include="Resources\setting.png" />
+    <Resource Include="Resources\TV.png" />
+    <Resource Include="Resources\video.png" />
+    <Resource Include="Resources\waiting.gif" />
+    <Resource Include="Resources\windows.ico" />
+    <Resource Include="Resources\youtube.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MouseKeyHook" Version="5.6.0" />
+  </ItemGroup>
 
 </Project>
