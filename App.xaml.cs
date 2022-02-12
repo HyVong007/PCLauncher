@@ -35,9 +35,9 @@ namespace PCLauncher
 
 		#region Config
 		public static string YoutubeExePath, YoutubeArgument, SearchExePath, SearchArgument, TVExePath, TVArgument;
-		public static string VideoPath, PhotoPath, SlideshowPath;
-		public static int SlideshowDelay;
-		public static bool SlideshowRandom;
+		public static string VideoPath, PhotoPath, WallpaperPath;
+		public static int WallpaperDelay;
+		public static bool WallpaperRandom;
 		#endregion
 	}
 }

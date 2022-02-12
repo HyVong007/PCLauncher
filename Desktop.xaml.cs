@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -65,8 +64,8 @@ namespace PCLauncher
 				Key.BrowserHome,
 				Key.LControlKey,
 				Key.RControlKey,
-Key.LWin,
-Key.RWin
+				Key.LWin,
+				Key.RWin
 };
 			using var soundPlayer = new SoundPlayer($"{App.PATH}/Resources/error.wav");
 			soundPlayer.LoadAsync();
@@ -82,7 +81,7 @@ Key.RWin
 
 			Util.taskBarState = Util.AppBarState.AutoHide;
 			Task.Delay(300).ContinueWith(_ => Util.isTaskBarVisible = false);
-			new SlideShow(this);
+			new Wallpaper(this);
 		}
 
 
@@ -142,7 +141,6 @@ Key.RWin
 
 		#region Icons
 		private const int DELAY_TO_MAXIMIZE = 4000;
-
 		private readonly ProcessStartInfo youtubeInfo = new ProcessStartInfo
 		{
 			FileName = App.YoutubeExePath,
@@ -367,23 +365,26 @@ Key.RWin
 		#endregion
 
 
-		private sealed class SlideShow
+		private sealed class Wallpaper
 		{
 			private readonly Desktop desktop;
-			public SlideShow(Desktop desktop)
+			public Wallpaper(Desktop desktop)
 			{
 				this.desktop = desktop;
 				uris.Clear();
-				foreach (string path in Directory.GetFiles(App.SlideshowPath))
+				foreach (string path in Directory.GetFiles(App.WallpaperPath))
 					if (IMAGE_EXTENSIONS.Contains(Path.GetExtension(path).ToUpper())) uris.Add(new Uri(path));
 				uris.Sort((a, b) => a.LocalPath.CompareTo(b.LocalPath));
 
 				desktop.Activated += (s, e) =>
 				{
-					if (uris.Count != 0)
+					lock (desktop)
 					{
-						cts = new CancellationTokenSource();
-						Show();
+						if (uris.Count != 0)
+						{
+							var token = (cts = new CancellationTokenSource()).Token;
+							Task.Run(async () => { try { await Show(token); } catch (OperationCanceledException) { } });
+						}
 					}
 				};
 
@@ -391,6 +392,7 @@ Key.RWin
 				{
 					cts?.Cancel();
 					cts?.Dispose();
+					cts = null;
 				};
 			}
 
@@ -403,21 +405,19 @@ Key.RWin
 				".PNG",
 				".GIF"
 			};
-			private readonly List<Uri> uris = new();
+			private List<Uri> uris = new();
 
 
-			private async void Show()
+			private async Task Show(CancellationToken token)
 			{
-				var token = cts.Token;
 				int index = 0;
-				if (App.SlideshowRandom)
+				if (App.WallpaperRandom)
 				{
 					var rand = new Random(DateTime.Now.Millisecond);
 					while (true)
 					{
 						UpdateWallpaper();
-						try { await Task.Delay(App.SlideshowDelay, token); }
-						catch (OperationCanceledException) { return; }
+						await Task.Delay(App.WallpaperDelay, token);
 						index = rand.Next(uris.Count);
 					}
 				}
@@ -428,8 +428,7 @@ Key.RWin
 					do
 					{
 						UpdateWallpaper();
-						try { await Task.Delay(App.SlideshowDelay, token); }
-						catch (OperationCanceledException) { return; }
+						await Task.Delay(App.WallpaperDelay, token);
 					} while (++index < uris.Count);
 					index = 0;
 				}
@@ -449,20 +448,24 @@ Key.RWin
 					}
 					catch
 					{
-						cts.Cancel();
-						cts.Dispose();
-						uris.Clear();
-						foreach (string path in Directory.GetFiles(App.SlideshowPath))
-							if (IMAGE_EXTENSIONS.Contains(Path.GetExtension(path).ToUpper())) uris.Add(new Uri(path));
-						uris.Sort((a, b) => a.LocalPath.CompareTo(b.LocalPath));
+						var tmp = new List<Uri>();
+						foreach (string path in Directory.GetFiles(App.WallpaperPath))
+							if (IMAGE_EXTENSIONS.Contains(Path.GetExtension(path).ToUpper())) tmp.Add(new Uri(path));
+						tmp.Sort((a, b) => a.LocalPath.CompareTo(b.LocalPath));
 
-						cts = new CancellationTokenSource();
-						Show();
-						return;
+						lock (desktop) uris = tmp;
+						App.Current.Dispatcher.Invoke(() =>
+						{
+							if (!desktop.IsActive) return;
+							cts?.Dispose();
+							token = (cts = new CancellationTokenSource()).Token;
+							Task.Run(async () => { try { await Show(token); } catch (OperationCanceledException) { } });
+						});
+						throw new OperationCanceledException();
 					}
 
 					image.Freeze();
-					desktop.wallPaper.Source = image;
+					App.Current.Dispatcher.Invoke(() => { if (desktop.IsActive) desktop.wallPaper.Source = image; });
 				}
 			}
 			#endregion

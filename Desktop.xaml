@@ -43,7 +43,7 @@
 		</Style>
 	</Window.Resources>
 	
-	<Grid>
+	<Grid Background="Black">
 		<Image Name="wallPaper" Source="Resources/ocean.jpg"/>
 
 		<Grid Name="iconGrid">
