@@ -67,7 +67,7 @@ namespace PCLauncher
 				Key.LWin,
 				Key.RWin
 };
-			using var soundPlayer = new SoundPlayer($"{App.PATH}/Resources/error.wav");
+			using var soundPlayer = new SoundPlayer($"{App.PATH}Resources/error.wav");
 			soundPlayer.LoadAsync();
 			var task = Task.CompletedTask;
 			Keyboard.allowKey = key =>
