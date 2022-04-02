@@ -1,10 +1,12 @@
 ﻿using Gma.System.MouseKeyHook;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
+using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -82,6 +84,7 @@ namespace PCLauncher
 			Util.taskBarState = Util.AppBarState.AutoHide;
 			Task.Delay(300).ContinueWith(_ => Util.isTaskBarVisible = false);
 			new Wallpaper(this);
+			SystemEvents.PowerModeChanged += PowerModeChanged;
 		}
 
 
@@ -136,12 +139,13 @@ namespace PCLauncher
 			Util.taskBarState = Util.AppBarState.AlwaysOnTop;
 			Util.isTaskBarVisible = true;
 #endif
+			SystemEvents.PowerModeChanged -= PowerModeChanged;
 		}
 
 
 		#region Icons
 		private const int DELAY_TO_MAXIMIZE = 4000;
-		private readonly ProcessStartInfo youtubeInfo = new ProcessStartInfo
+		private readonly ProcessStartInfo youtubeInfo = new()
 		{
 			FileName = App.YoutubeExePath,
 			Arguments = App.YoutubeArgument
@@ -159,7 +163,7 @@ namespace PCLauncher
 		}
 
 
-		private readonly ProcessStartInfo searchInfo = new ProcessStartInfo
+		private readonly ProcessStartInfo searchInfo = new()
 		{
 			FileName = App.SearchExePath,
 			Arguments = App.SearchArgument
@@ -177,7 +181,7 @@ namespace PCLauncher
 		}
 
 
-		private readonly ProcessStartInfo tvInfo = new ProcessStartInfo
+		private readonly ProcessStartInfo tvInfo = new()
 		{
 			FileName = App.TVExePath,
 			Arguments = App.TVArgument
@@ -360,8 +364,6 @@ namespace PCLauncher
 			if (!instance.xButton.IsOpen) instance.xButton.IsOpen = true;
 			if (!xTimer.IsEnabled) xTimer.IsEnabled = true;
 		}
-
-
 		#endregion
 
 
@@ -470,5 +472,15 @@ namespace PCLauncher
 			}
 			#endregion
 		}
+
+
+		#region Tự động nhấn phím MediaPlayPause khi awake từ sleep
+		private static void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+		{
+			if (e.Mode != PowerModes.Resume) return;
+			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
+				Keyboard.Press(Key.MediaPlayPause);
+		}
+		#endregion
 	}
 }

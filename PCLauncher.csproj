@@ -16,6 +16,7 @@
     <None Remove="Games\Nestopia\changelog.txt" />
     <None Remove="Games\Nestopia\copying.txt" />
     <None Remove="Games\Nestopia\games\tank.nes" />
+    <None Remove="Games\Nestopia\games\tetris.nes" />
     <None Remove="Games\Nestopia\HƯỚNG DẪN CÀI ĐẶT TAY CẦM.txt" />
     <None Remove="Games\Nestopia\kailleraclient.dll" />
     <None Remove="Games\Nestopia\language\english.nlg" />
@@ -29,6 +30,7 @@
     <None Remove="Resources\error.wav" />
     <None Remove="Resources\facebook.png" />
     <None Remove="Resources\game tank.png" />
+    <None Remove="Resources\game tetris.gif" />
     <None Remove="Resources\game.png" />
     <None Remove="Resources\microphone.png" />
     <None Remove="Resources\ocean.jpg" />
@@ -58,6 +60,9 @@
     <Content Include="Games\Nestopia\games\tank.nes">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Games\Nestopia\games\tetris.nes">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="HƯỚNG DẪN CÀI ĐẶT TAY CẦM.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -82,6 +87,7 @@
     <Content Include="Games\Nestopia\unrar.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Resource Include="Resources\game tetris.gif" />
   </ItemGroup>
 
   <ItemGroup>

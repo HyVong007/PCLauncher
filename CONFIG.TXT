@@ -9,3 +9,4 @@ PhotoPath=D:\Desktop\Photo
 WallpaperPath=D:\Desktop\Photo
 WallpaperDelay=2000
 WallpaperRandom=true
+NestopiaTVAspectRatio=352

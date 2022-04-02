@@ -30,6 +30,7 @@ namespace PCLauncher
 		public static string VideoPath, PhotoPath, WallpaperPath;
 		public static int WallpaperDelay;
 		public static bool WallpaperRandom;
+		public static int NestopiaTVAspectRatio;
 		#endregion
 	}
 }

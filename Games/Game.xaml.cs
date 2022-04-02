@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharpDX.XInput;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ namespace PCLauncher.Games
 	public partial class Game : Window
 	{
 		private Process nestopia;
+		private readonly Controller xbox;
 		public Game()
 		{
 			InitializeComponent();
@@ -18,34 +20,17 @@ namespace PCLauncher.Games
 
 			// Có 2 tay cầm: Generic Gamepad (luôn kết nối USB) và Xbox (có thể kết nối hoặc không)
 			// Khi tay cầm Xbox kết nối/ngắt kết nối thì thay đổi cài đặt và khởi động lại Nestopia
-			
-			var xbox = new SharpDX.XInput.Controller(SharpDX.XInput.UserIndex.One);
-			ChangeNestopiaSetting();
+
+			xbox = new Controller(UserIndex.One);
 			bool xboxConnected = xbox.IsConnected;
 			DispatcherTimer timer = null;
 			Closed += (_, __) => timer.Stop();
 			timer = new DispatcherTimer(new TimeSpan(0, 0, 1), DispatcherPriority.Background, (_, __) =>
 			{
 				if (xbox.IsConnected == xboxConnected) return;
-
 				xboxConnected = xbox.IsConnected;
-				bool runningNestopia = CloseNestopia();
-				ChangeNestopiaSetting();
-
-				// Hiện tại chỉ có game Tank nên khởi động game Tank
-				if (runningNestopia) Click_Tank(null, null);
+				if (!string.IsNullOrEmpty(currentGame)) Click_Game(currentGame);
 			}, App.Current.Dispatcher);
-
-
-			void ChangeNestopiaSetting()
-			{
-				try
-				{
-					File.Delete($"{path}\\nestopia.xml");
-					File.Copy($"{path}\\{(xbox.IsConnected ? "TWO GAMEPAD SETTING.xml" : "ONE GAMEPAD SETTING.xml")}", $"{path}\\nestopia.xml");
-				}
-				catch { }
-			}
 		}
 
 
@@ -63,15 +48,38 @@ namespace PCLauncher.Games
 		}
 
 
+		private void Click_Tank(object sender, RoutedEventArgs e) => Click_Game("tank.nes");
+
+
+		private void Click_Tetris(object sender, RoutedEventArgs e) => Click_Game("tetris.nes");
+
+
+		private static string currentGame;
 		private static readonly string path = $"{App.PATH}Games\\Nestopia";
-		public async void Click_Tank(object _, RoutedEventArgs __)
+		private async void Click_Game(string game)
 		{
+			IsEnabled = false;
 			Desktop.clickX -= ClickX;
 			CloseNestopia();
-			Process.Start($"{path}\\nestopia.exe", $"{path}\\games\\tank.nes");
+
+			#region Change Nestopia Setting
+			try { File.Delete($"{path}\\nestopia.xml"); } catch { }
+			File.Copy($"{path}\\{(xbox.IsConnected ? "TWO GAMEPAD SETTING.xml" : "ONE GAMEPAD SETTING.xml")}", $"{path}\\nestopia.xml");
+
+			// Cài đặt game Tetris: TV Aspect Ratio = yes
+			if (game == "tetris.nes")
+			{
+				var lines = File.ReadAllLines($"{path}\\nestopia.xml");
+				lines[App.NestopiaTVAspectRatio] = "<tv-aspect-ratio>yes</tv-aspect-ratio>";
+				File.WriteAllLines($"{path}\\nestopia.xml", lines);
+			}
+			#endregion
+
+			Process.Start($"{path}\\nestopia.exe", $"{path}\\games\\{currentGame = game}");
 			await Task.Delay(1000);
 			(nestopia = Process.GetProcessesByName("nestopia")[0]).MaximizeMainWindow();
 			Desktop.clickX += ClickX;
+			IsEnabled = true;
 		}
 
 
@@ -82,6 +90,7 @@ namespace PCLauncher.Games
 				nestopia.CloseMainWindow();
 				if (!nestopia.WaitForExit(1000)) nestopia.Kill();
 				nestopia = null;
+				currentGame = "";
 				return true;
 			}
 
