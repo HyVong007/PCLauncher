@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -85,11 +86,14 @@ namespace PCLauncher
 			Task.Delay(300).ContinueWith(_ => Util.isTaskBarVisible = false);
 			new Wallpaper(this);
 			SystemEvents.PowerModeChanged += PowerModeChanged;
+			calendar.MouseEnter += (_, __) => CalendarGotoNow();
+			calendar.MouseLeave += (_, __) => CalendarGotoNow();
+			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
 		}
 
 
 		private CancellationTokenSource cancelMaximizing;
-		private async void Window_Activated(object sender, EventArgs e)
+		private void Window_Activated(object sender, EventArgs e)
 		{
 			AutoHideIcon(true);
 			administrator = false;
@@ -97,20 +101,24 @@ namespace PCLauncher
 
 			#region Maximize các ứng dụng đang chạy (nếu có)
 			var token = (cancelMaximizing = new CancellationTokenSource()).Token;
-			await Task.Run(async () =>
-			{
-				await Task.Delay(DELAY_TO_MAXIMIZE);
-				if (token.IsCancellationRequested) return;
+			Task.Run(async () =>
+		   {
+			   await Task.Delay(DELAY_TO_MAXIMIZE);
+			   if (token.IsCancellationRequested) return;
 
-				foreach (var p in Process.GetProcessesByName("msedge")) p.MaximizeMainWindow();
-				foreach (var p in Process.GetProcessesByName("chrome")) p.MaximizeMainWindow();
-				foreach (var p in Process.GetProcessesByName("mpc-be64")) p.MaximizeMainWindow();
-				string videoName = Path.GetFileName(App.VideoPath);
-				string photoName = Path.GetFileName(App.PhotoPath);
-				foreach (var p in Process.GetProcessesByName("explorer"))
-					if (p.MainWindowTitle == videoName || p.MainWindowTitle == photoName) p.MaximizeMainWindow();
-			});
+			   foreach (var p in Process.GetProcessesByName("msedge")) p.MaximizeMainWindow();
+			   foreach (var p in Process.GetProcessesByName("chrome")) p.MaximizeMainWindow();
+			   foreach (var p in Process.GetProcessesByName("mpc-be64")) p.MaximizeMainWindow();
+			   string videoName = Path.GetFileName(App.VideoPath);
+			   string photoName = Path.GetFileName(App.PhotoPath);
+			   foreach (var p in Process.GetProcessesByName("explorer"))
+				   if (p.MainWindowTitle == videoName || p.MainWindowTitle == photoName) p.MaximizeMainWindow();
+		   });
 			#endregion
+
+			dateTimePanel.Visibility = Visibility.Visible;
+			CalendarGotoNow();
+			clockTimer.Start();
 		}
 
 
@@ -119,6 +127,8 @@ namespace PCLauncher
 			AutoHideIcon(false);
 			cancelMaximizing.Cancel();
 			cancelMaximizing.Dispose();
+			clockTimer.Stop();
+			dateTimePanel.Visibility = Visibility.Collapsed;
 		}
 
 
@@ -266,7 +276,7 @@ namespace PCLauncher
 		private static readonly DispatcherTimer iconTimer = new(new TimeSpan(0, 0, 1), DispatcherPriority.Background, (_, __) =>
 		{
 			if (++iconTime < 5) return;
-			instance.iconGrid.Visibility = Visibility.Collapsed;
+			ShowIcon(false);
 			iconTimer.Stop();
 		}, App.Current.Dispatcher)
 		{
@@ -280,17 +290,16 @@ namespace PCLauncher
 			if (iconTimer.IsEnabled == active) return;
 			iconTimer.IsEnabled = active;
 			iconTime = 0;
+			ShowIcon(active);
 
 			if (active)
 			{
-				instance.iconGrid.Visibility = Visibility.Visible;
 				mouseKeyHook.KeyDown += OnMouseKeyEvents;
 				mouseKeyHook.MouseMove += OnMouseKeyEvents;
 				mouseKeyHook.MouseDown += OnMouseKeyEvents;
 			}
 			else
 			{
-				instance.iconGrid.Visibility = Visibility.Collapsed;
 				mouseKeyHook.KeyDown -= OnMouseKeyEvents;
 				mouseKeyHook.MouseMove -= OnMouseKeyEvents;
 				mouseKeyHook.MouseDown -= OnMouseKeyEvents;
@@ -300,8 +309,25 @@ namespace PCLauncher
 			static void OnMouseKeyEvents(object? sender, EventArgs arg)
 			{
 				iconTime = 0;
-				instance.iconGrid.Visibility = Visibility.Visible;
+				ShowIcon(true);
 				if (!iconTimer.IsEnabled) iconTimer.IsEnabled = true;
+			}
+		}
+
+
+		private static void ShowIcon(bool show)
+		{
+			if (show)
+			{
+				instance.iconGrid.Visibility = Visibility.Visible;
+				instance.dateTimePanel.HorizontalAlignment = HorizontalAlignment.Right;
+				instance.dateTimePanel.VerticalAlignment = VerticalAlignment.Top;
+			}
+			else
+			{
+				instance.iconGrid.Visibility = Visibility.Collapsed;
+				instance.dateTimePanel.HorizontalAlignment = HorizontalAlignment.Center;
+				instance.dateTimePanel.VerticalAlignment = VerticalAlignment.Center;
 			}
 		}
 		#endregion
@@ -474,12 +500,41 @@ namespace PCLauncher
 		}
 
 
-		#region Tự động nhấn phím MediaPlayPause khi awake từ sleep
+		#region Resume từ sleep
 		private static void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
 		{
 			if (e.Mode != PowerModes.Resume) return;
 			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
 				Keyboard.Press(Key.MediaPlayPause);
+			if (instance.IsActive) instance.CalendarGotoNow();
+		}
+		#endregion
+
+
+		#region Clock and Calendar
+		private static readonly SolidColorBrush[] rainBow =
+			{ new SolidColorBrush(Colors.Red), new SolidColorBrush(Colors.Orange), new SolidColorBrush(Colors.Yellow),
+			new SolidColorBrush(Colors.Green), new SolidColorBrush(Colors.Blue), new SolidColorBrush(Colors.Indigo),
+			new SolidColorBrush(Colors.Violet) };
+		private static int rainBowIndex;
+		private static readonly DispatcherTimer clockTimer = new(new TimeSpan(0, 0, 1), DispatcherPriority.Normal, (_, __) =>
+		{
+			var time = DateTime.Now;
+			if (time.Day != cacheDate.Day) instance.CalendarGotoNow();
+			instance.clock.Text = $"{time.Hour:00} : {time.Minute:00} : {time.Second:00}";
+			instance.clock.Foreground = rainBow[rainBowIndex++];
+			if (rainBowIndex >= rainBow.Length) rainBowIndex = 0;
+		}, App.Current.Dispatcher)
+		{
+			IsEnabled = false
+		};
+
+
+		private static DateTime cacheDate;
+		private void CalendarGotoNow()
+		{
+			calendar.DisplayMode = CalendarMode.Month;
+			calendar.DisplayDate = cacheDate = DateTime.Now;
 		}
 		#endregion
 	}
