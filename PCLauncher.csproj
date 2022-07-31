@@ -1,13 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+	<TargetPlatformVersion>10.0</TargetPlatformVersion>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+	<TargetFramework>net6.0-windows$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <StartupObject>PCLauncher.App</StartupObject>
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
     <UseWindowsForms>True</UseWindowsForms>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,13 +29,17 @@
     <None Remove="Games\Nestopia\schemadb.xsd" />
     <None Remove="Games\Nestopia\schemaromset.xsd" />
     <None Remove="Games\Nestopia\unrar.dll" />
+    <None Remove="Resources\alarm off.png" />
+    <None Remove="Resources\alarm on.png" />
     <None Remove="Resources\close.png" />
+    <None Remove="Resources\co tuong.png" />
     <None Remove="Resources\error.wav" />
     <None Remove="Resources\facebook.png" />
     <None Remove="Resources\game tank.png" />
     <None Remove="Resources\game tetris.gif" />
     <None Remove="Resources\game.png" />
     <None Remove="Resources\microphone.png" />
+    <None Remove="Resources\music.png" />
     <None Remove="Resources\ocean.jpg" />
     <None Remove="Resources\photo.png" />
     <None Remove="Resources\search.png" />
@@ -63,9 +70,6 @@
     <Content Include="Games\Nestopia\games\tetris.nes">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="HƯỚNG DẪN CÀI ĐẶT TAY CẦM.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="Games\Nestopia\kailleraclient.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -87,6 +91,9 @@
     <Content Include="Games\Nestopia\unrar.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Resource Include="Resources\alarm off.png" />
+    <Resource Include="Resources\alarm on.png" />
+    <Resource Include="Resources\co tuong.png" />
     <Resource Include="Resources\game tetris.gif" />
   </ItemGroup>
 
@@ -102,6 +109,7 @@
     </Content>
     <Resource Include="Resources\facebook.png" />
     <Resource Include="Resources\game.png" />
+    <Resource Include="Resources\music.png" />
     <Resource Include="Resources\photo.png" />
     <Resource Include="Resources\microphone.png" />
     <Resource Include="Resources\ocean.jpg" />
@@ -119,8 +127,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="1.6.4" />
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.22621.2" />
     <PackageReference Include="MouseKeyHook" Version="5.6.0" />
     <PackageReference Include="SharpDX.XInput" Version="4.2.0" />
+    <PackageReference Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0" />
+    <PackageReference Include="System.Runtime.WindowsRuntime" Version="4.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Windows">
+      <HintPath>C:\Program Files (x86)\Windows Kits\10\UnionMetadata\10.0.19041.0\Windows.winmd</HintPath>
+      <IsWinMDFile>true</IsWinMDFile>
+    </Reference>
   </ItemGroup>
 
 </Project>

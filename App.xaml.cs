@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 
@@ -31,6 +32,10 @@ namespace PCLauncher
 		public static int WallpaperDelay;
 		public static bool WallpaperRandom;
 		public static int NestopiaTVAspectRatio;
+		public static int BluetoothInitialVolume;
+		public static string AlarmTime;
+		public static string AlarmPath;
+		public static int AlarmVolume;
 		#endregion
 	}
 }

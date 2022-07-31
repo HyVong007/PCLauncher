@@ -6,14 +6,17 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
-using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Windows.Devices.Bluetooth;
+using Windows.Devices.Enumeration;
 
 
 namespace PCLauncher
@@ -26,6 +29,8 @@ namespace PCLauncher
 		/// Chế độ Administrator (nhấn vô icon Windows để kích hoạt)
 		/// </summary>
 		private static bool administrator;
+
+
 		public Desktop()
 		{
 			instance = this;
@@ -39,43 +44,17 @@ namespace PCLauncher
 			iconPhoto.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/photo.png"));
 			iconGame.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/game.png"));
 			iconWindows.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/windows.ico"));
+			//iconAlarm.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/alarm off.png"));
 			#endregion
 
 			#region Giới hạn bàn phím: cấm những phím nâng cao
-			var bannedKeys = new List<Key>
-			{
-#if !DEBUG
-				Key.LMenu,
-				Key.RMenu,
-				Key.F4,
-#endif
-				Key.F1,
-				Key.F2,
-				Key.F3,
-				Key.F5,
-				Key.F6,
-				Key.F7,
-				Key.F8,
-				Key.F9,
-				Key.F10,
-				Key.F11,
-				Key.F12,
-				Key.SelectMedia,
-				Key.LaunchMail,
-				Key.VolumeMute,
-				Key.BrowserSearch,
-				Key.BrowserHome,
-				Key.LControlKey,
-				Key.RControlKey,
-				Key.LWin,
-				Key.RWin
-};
-			using var soundPlayer = new SoundPlayer($"{App.PATH}Resources/error.wav");
+			var soundPlayer = new SoundPlayer($"{App.PATH}Resources/error.wav");
+			Closed += (_, __) => soundPlayer.Dispose();
 			soundPlayer.LoadAsync();
 			var task = Task.CompletedTask;
 			Keyboard.allowKey = key =>
 			{
-				if (administrator || !bannedKeys.Contains(key)) return true;
+				if (administrator || key_allow[key]) return true;
 				if (task.IsCompleted) task = Task.Run(soundPlayer.Play);
 				return false;
 			};
@@ -89,7 +68,138 @@ namespace PCLauncher
 			calendar.MouseEnter += (_, __) => CalendarGotoNow();
 			calendar.MouseLeave += (_, __) => CalendarGotoNow();
 			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
+
+			#region Cài báo thức
+			if (string.IsNullOrEmpty(App.AlarmTime)) goto NO_ALARM;
+			var s = App.AlarmTime.Split(':');
+			if (s.Length != 2 || s[0].Length == 0 || s[1].Length == 0) goto NO_ALARM;
+			var now = DateTime.Now;
+			try { alarmTime = new DateTime(now.Year, now.Month, now.Day, Convert.ToByte(s[0]), Convert.ToByte(s[1]), 0); }
+			catch { goto NO_ALARM; }
+			if (alarmTime <= now) alarmTime = alarmTime.Value.AddDays(1);
+			Util.WakePC(alarmTime.Value);
+			SetAlarm();
+		NO_ALARM:;
+			#endregion
 		}
+
+
+		#region Báo thức
+		private DateTime? alarmTime;
+		private CancellationTokenSource cancelAlarm = new();
+
+
+		private async void SetAlarm()
+		{
+			var token = cancelAlarm.Token;
+			try { await Task.Delay(alarmTime.Value - DateTime.Now, token); } catch (OperationCanceledException) { return; }
+
+			alarmTime = alarmTime.Value.AddDays(1);
+			Util.WakePC(alarmTime.Value);
+			Task.Delay(1).ContinueWith(_ => SetAlarm());
+			new AlarmNotification(mouseKeyHook).Show();
+		}
+
+
+		private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+		{
+			if (e.Mode == PowerModes.Suspend) return;
+			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
+				Keyboard.Press(Key.MediaPlayPause);
+			if (IsActive) instance.CalendarGotoNow();
+			if (alarmTime == null) return;
+
+			double m = (DateTime.Now - alarmTime.Value).TotalMinutes;
+			if (m >= 0) alarmTime = alarmTime.Value.AddDays(1);
+			Util.WakePC(alarmTime.Value);
+			SetAlarm();
+			if (0 <= m && m < 3) new AlarmNotification(mouseKeyHook).Show();
+		}
+		#endregion
+
+
+		#region Cho phép/Cấm phím
+		private static readonly Dictionary<Key, bool> key_allow = new()
+		{
+#if !DEBUG
+			{ Key.LMenu, false },
+			{ Key.RMenu,false },
+			{ Key.F4,false },
+#endif
+			{ Key.F1,false },
+			{ Key.F2,false },
+			{ Key.F3,false },
+			{ Key.F5,false },
+			{ Key.F6,false },
+			{ Key.F7,false },
+			{ Key.F8,false },
+			{ Key.F9,false },
+			{ Key.F10,false },
+			{ Key.F11,false },
+			{ Key.F12,false },
+			{ Key.SelectMedia,false },
+			{ Key.LaunchMail,false },
+			{ Key.VolumeMute,false },
+			{ Key.BrowserSearch,false },
+			{ Key.BrowserHome,false },
+			{ Key.LControlKey,false },
+			{ Key.RControlKey,false },
+			{ Key.LWin,false },
+			{ Key.RWin,false }
+		};
+
+
+		static Desktop()
+		{
+			foreach (Key key in Enum.GetValues(typeof(Key)))
+				if (!key_allow.ContainsKey(key)) key_allow[key] = true;
+		}
+		#endregion
+
+
+		#region (Chưa thành công) Tắt volume khi kết nối loa Bluetooth, sau đó tăng lên từ từ
+		private DeviceWatcher deviceWatcher;
+		private readonly Dictionary<string, BluetoothDevice> id_AudioBluetooths = new();
+		private IntPtr handle;
+
+
+		private async void RegisterBluetoothEvents()
+		{
+			deviceWatcher = DeviceInformation.CreateWatcher(BluetoothDevice.GetDeviceSelector());
+			deviceWatcher.Added += async (_, info) =>
+			{
+				var d = await BluetoothDevice.FromIdAsync(info.Id);
+				if ((d.ClassOfDevice.ServiceCapabilities & BluetoothServiceCapabilities.AudioService) == BluetoothServiceCapabilities.AudioService)
+					(id_AudioBluetooths[d.DeviceId] = d).ConnectionStatusChanged += AdjustVolume;
+			};
+			deviceWatcher.Removed += (_, info) =>
+			{
+				if (id_AudioBluetooths.TryGetValue(info.Id, out BluetoothDevice d))
+				{
+					d.Dispose();
+					id_AudioBluetooths.Remove(info.Id);
+				}
+			};
+			deviceWatcher.Start();
+
+
+			async void AdjustVolume(BluetoothDevice d, object _)
+			{
+				if (d.ConnectionStatus == BluetoothConnectionStatus.Disconnected) return;
+
+				App.Current.Dispatcher.Invoke(async () =>
+				{
+					handle = new WindowInteropHelper(this).Handle;
+					for (int i = 0; i < 100; ++i) Util.VolumeDown(handle);
+					for (int i = 0; i < App.BluetoothInitialVolume; i += 2)
+					{
+						Util.VolumeUp(handle);
+						await Task.Delay(100);
+					}
+				});
+			}
+		}
+		#endregion
 
 
 		private CancellationTokenSource cancelMaximizing;
@@ -116,7 +226,7 @@ namespace PCLauncher
 		   });
 			#endregion
 
-			dateTimePanel.Visibility = Visibility.Visible;
+			calendar.Visibility = clock.Visibility = Visibility.Visible;
 			CalendarGotoNow();
 			clockTimer.Start();
 		}
@@ -128,7 +238,7 @@ namespace PCLauncher
 			cancelMaximizing.Cancel();
 			cancelMaximizing.Dispose();
 			clockTimer.Stop();
-			dateTimePanel.Visibility = Visibility.Collapsed;
+			calendar.Visibility = clock.Visibility = Visibility.Collapsed;
 		}
 
 
@@ -150,6 +260,7 @@ namespace PCLauncher
 			Util.isTaskBarVisible = true;
 #endif
 			SystemEvents.PowerModeChanged -= PowerModeChanged;
+			foreach (var d in id_AudioBluetooths.Values) d.Dispose();
 		}
 
 
@@ -217,39 +328,56 @@ namespace PCLauncher
 		}
 
 
-		private void Click_Video_Icon(object sender, RoutedEventArgs e) => OpenFolder(App.VideoPath);
+		private async void Click_Video_Icon(object sender, RoutedEventArgs e)
+		{
+			iconVideo.IsEnabled = false;
+			var videoExplorer = await OpenFolder(App.VideoPath);
+			clickX += ClickX;
+			iconVideo.IsEnabled = true;
+
+
+			void ClickX()
+			{
+				var mpc = Process.GetProcessesByName("mpc-be64");
+				if (mpc.Length != 0)
+				{
+					foreach (var p in mpc) p.CloseMainWindow();
+					return;
+				}
+
+				if (videoExplorer?.HasExited == false) videoExplorer.CloseMainWindow();
+				clickX -= ClickX;
+			}
+		}
 
 
 		private void Click_Photo_Icon(object sender, RoutedEventArgs e) => OpenFolder(App.PhotoPath);
 
 
-		private async void OpenFolder(string path)
+		private async Task<Process> OpenFolder(string path)
 		{
 			IsEnabled = false;
 			string name = Path.GetFileName(path);
-			bool found = false;
+			Process result = null;
 			foreach (var p in Process.GetProcessesByName("explorer"))
 				if (p.MainWindowTitle == name)
-					if (found) p.CloseMainWindow();
-					else
-					{
-						found = true;
-						p.MaximizeMainWindow();
-					}
+					if (result != null) p.CloseMainWindow();
+					else (result = p).MaximizeMainWindow();
 
-			if (!found)
+			if (result == null)
 			{
 				Process.Start("explorer", path);
 				await Task.Delay(DELAY_TO_MAXIMIZE);
 				foreach (var p in Process.GetProcessesByName("explorer"))
 					if (p.MainWindowTitle == name)
 					{
-						p.MaximizeMainWindow();
+						(result = p).MaximizeMainWindow();
 						break;
 					}
 			}
 
 			IsEnabled = true;
+			return result;
 		}
 
 
@@ -276,7 +404,7 @@ namespace PCLauncher
 		private static readonly DispatcherTimer iconTimer = new(new TimeSpan(0, 0, 1), DispatcherPriority.Background, (_, __) =>
 		{
 			if (++iconTime < 5) return;
-			ShowIcon(false);
+			instance.iconGrid.Visibility = Visibility.Collapsed;
 			iconTimer.Stop();
 		}, App.Current.Dispatcher)
 		{
@@ -290,16 +418,17 @@ namespace PCLauncher
 			if (iconTimer.IsEnabled == active) return;
 			iconTimer.IsEnabled = active;
 			iconTime = 0;
-			ShowIcon(active);
 
 			if (active)
 			{
+				instance.iconGrid.Visibility = Visibility.Visible;
 				mouseKeyHook.KeyDown += OnMouseKeyEvents;
 				mouseKeyHook.MouseMove += OnMouseKeyEvents;
 				mouseKeyHook.MouseDown += OnMouseKeyEvents;
 			}
 			else
 			{
+				instance.iconGrid.Visibility = Visibility.Collapsed;
 				mouseKeyHook.KeyDown -= OnMouseKeyEvents;
 				mouseKeyHook.MouseMove -= OnMouseKeyEvents;
 				mouseKeyHook.MouseDown -= OnMouseKeyEvents;
@@ -309,25 +438,8 @@ namespace PCLauncher
 			static void OnMouseKeyEvents(object? sender, EventArgs arg)
 			{
 				iconTime = 0;
-				ShowIcon(true);
-				if (!iconTimer.IsEnabled) iconTimer.IsEnabled = true;
-			}
-		}
-
-
-		private static void ShowIcon(bool show)
-		{
-			if (show)
-			{
 				instance.iconGrid.Visibility = Visibility.Visible;
-				instance.dateTimePanel.HorizontalAlignment = HorizontalAlignment.Right;
-				instance.dateTimePanel.VerticalAlignment = VerticalAlignment.Top;
-			}
-			else
-			{
-				instance.iconGrid.Visibility = Visibility.Collapsed;
-				instance.dateTimePanel.HorizontalAlignment = HorizontalAlignment.Center;
-				instance.dateTimePanel.VerticalAlignment = VerticalAlignment.Center;
+				if (!iconTimer.IsEnabled) iconTimer.IsEnabled = true;
 			}
 		}
 		#endregion
@@ -359,7 +471,6 @@ namespace PCLauncher
 			add
 			{
 				bool empty = ΔclickX == null;
-
 				ΔclickX += value;
 				if (!empty) return;
 
@@ -500,17 +611,6 @@ namespace PCLauncher
 		}
 
 
-		#region Resume từ sleep
-		private static void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
-		{
-			if (e.Mode != PowerModes.Resume) return;
-			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
-				Keyboard.Press(Key.MediaPlayPause);
-			if (instance.IsActive) instance.CalendarGotoNow();
-		}
-		#endregion
-
-
 		#region Clock and Calendar
 		private static readonly SolidColorBrush[] rainBow =
 			{ new SolidColorBrush(Colors.Red), new SolidColorBrush(Colors.Orange), new SolidColorBrush(Colors.Yellow),
@@ -521,7 +621,7 @@ namespace PCLauncher
 		{
 			var time = DateTime.Now;
 			if (time.Day != cacheDate.Day) instance.CalendarGotoNow();
-			instance.clock.Text = $"{time.Hour:00} : {time.Minute:00} : {time.Second:00}";
+			instance.clock.Text = $"{(time.Hour == 0 ? 12 : time.Hour < 13 ? time.Hour : time.Hour - 12)} : {time.Minute:00} : {time.Second:00}";
 			instance.clock.Foreground = rainBow[rainBowIndex++];
 			if (rainBowIndex >= rainBow.Length) rainBowIndex = 0;
 		}, App.Current.Dispatcher)
@@ -534,7 +634,7 @@ namespace PCLauncher
 		private void CalendarGotoNow()
 		{
 			calendar.DisplayMode = CalendarMode.Month;
-			calendar.DisplayDate = cacheDate = DateTime.Now;
+			calendar.SelectedDate = calendar.DisplayDate = cacheDate = DateTime.Now;
 		}
 		#endregion
 	}

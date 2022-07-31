@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Reflection;
-using System.IO;
-using System.Windows.Media;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using Windows.Foundation;
 
 
 namespace PCLauncher
@@ -225,6 +229,73 @@ namespace PCLauncher
 			}
 			return foundElement as T;
 		}
+
+
+		#region Sleep and Awake
+		[DllImport("kernel32.dll", SetLastError = true)]
+		private static extern IntPtr CreateWaitableTimer(IntPtr lpTimerAttributes, bool bManualReset, string lpTimerName);
+
+		[DllImport("kernel32.dll", SetLastError = true)]
+		private static extern bool SetWaitableTimer(IntPtr hTimer, [In] ref long pDueTime, int lPeriod, TimerCompleteDelegate pfnCompletionRoutine, IntPtr pArgToCompletionRoutine, bool fResume);
+
+		[DllImport("powrprof.dll", SetLastError = true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
+
+		private delegate void TimerCompleteDelegate();
+
+		[DllImport("kernel32.dll", SetLastError = true)]
+		public static extern bool CancelWaitableTimer(IntPtr hTimer);
+
+
+		public static IntPtr WakePC(in DateTime dt)
+		{
+			TimerCompleteDelegate timerComplete = null;
+			long interval = dt.ToFileTime();
+			IntPtr handle = CreateWaitableTimer(IntPtr.Zero, true, "WaitableTimer");
+			SetWaitableTimer(handle, ref interval, 0, timerComplete, IntPtr.Zero, true);
+			return handle;
+		}
+
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool SleepPC() => SetSuspendState(false, false, false);
+		#endregion
+
+
+		public static TaskAwaiter GetAwaiter(this IAsyncAction op)
+		{
+			var source = new TaskCompletionSource();
+			if (op.Status == AsyncStatus.Completed) source.SetResult();
+			else op.Completed += (info, status) => source.SetResult();
+			return source.Task.GetAwaiter();
+		}
+
+
+		public static TaskAwaiter<T> GetAwaiter<T>(this IAsyncOperation<T> op)
+		{
+			var source = new TaskCompletionSource<T>();
+			if (op.Status == AsyncStatus.Completed) source.TrySetResult(op.GetResults());
+			else op.Completed += (info, status) => source.TrySetResult(op.GetResults());
+			return source.Task.GetAwaiter();
+		}
+
+
+		#region Sound Volume
+		private const int APPCOMMAND_VOLUME_MUTE = 0x80000;
+		private const int APPCOMMAND_VOLUME_UP = 0xA0000;
+		private const int APPCOMMAND_VOLUME_DOWN = 0x90000;
+		private const int WM_APPCOMMAND = 0x319;
+
+
+		[DllImport("user32.dll")]
+		private static extern IntPtr SendMessageW(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+
+		public static void VolumeMute(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_MUTE);
+		public static void VolumeDown(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_DOWN);
+		public static void VolumeUp(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_UP);
+		#endregion
 	}
 
 

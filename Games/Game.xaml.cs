@@ -1,4 +1,5 @@
-﻿using SharpDX.XInput;
+﻿using Microsoft.Win32;
+using SharpDX.XInput;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -31,6 +32,7 @@ namespace PCLauncher.Games
 				xboxConnected = xbox.IsConnected;
 				if (!string.IsNullOrEmpty(currentGame)) Click_Game(currentGame);
 			}, App.Current.Dispatcher);
+			SystemEvents.PowerModeChanged += PowerModeChanged;
 		}
 
 
@@ -52,6 +54,24 @@ namespace PCLauncher.Games
 
 
 		private void Click_Tetris(object sender, RoutedEventArgs e) => Click_Game("tetris.nes");
+
+
+		private async void Click_CoTuong(object sender, RoutedEventArgs e)
+		{
+			IsEnabled = false;
+			Activated += ShowX;
+			Desktop.clickX -= ClickX;
+			Process.Start($"{App.PATH}Games\\Co Tuong\\Co Tuong.exe");
+			await Task.Delay(3000);
+			IsEnabled = true;
+
+
+			void ShowX(object sender, EventArgs e)
+			{
+				Activated -= ShowX;
+				Desktop.clickX += ClickX;
+			}
+		}
 
 
 		private static string currentGame;
@@ -102,7 +122,14 @@ namespace PCLauncher.Games
 		{
 			if (CloseNestopia()) return;
 			Desktop.clickX -= ClickX;
+			SystemEvents.PowerModeChanged -= PowerModeChanged;
 			Close();
+		}
+
+
+		private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+		{
+			if (e.Mode == PowerModes.Resume) CloseNestopia();
 		}
 	}
 }

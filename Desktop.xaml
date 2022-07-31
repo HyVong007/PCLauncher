@@ -130,7 +130,6 @@
 
 		<!-- Date Time -->
 		<StackPanel
-			Name="dateTimePanel"
 			HorizontalAlignment="Right"
 			VerticalAlignment="Top"
 			>
@@ -143,7 +142,6 @@
 				Name="calendar"
 				FirstDayOfWeek="Monday"
 				IsTodayHighlighted="True"
-				Background="Transparent"
 				FontStyle="Oblique"
 				Foreground="Red"
 				/>

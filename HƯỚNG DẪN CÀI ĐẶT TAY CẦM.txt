@@ -1,9 +1,0 @@
-﻿1/ Kết nối duy nhất 1 tay cầm Generic > chạy Nestopia từ file.exe > chỉnh nút cho 1 tay cầm > thoát Nestopia 
-	> đổi tên "nestopia.xml" thành "ONE GAMEPAD SETTING.xml".
-
-2/ Kết nối cả 2 tay cầm (Generic và Xbox) > chạy Nestopia từ file.exe > chỉnh nút cho 2 tay cầm > thoát Nestopia
-	> đổi tên "nestopia.xml" thành "TWO GAMEPAD SETTING.xml". 
-
-=> Từ bây giờ, trong PCLauncher > Game : 
-	mỗi khi kết nối/ngắt kết nối tay cầm Xbox thì PCLauncher tự động cài đặt và khởi động lại Nestopia và game đang chơi nếu có.
-Tay cầm Generic thì luôn kết nối USB.
