@@ -44,7 +44,6 @@ namespace PCLauncher
 			iconPhoto.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/photo.png"));
 			iconGame.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/game.png"));
 			iconWindows.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/windows.ico"));
-			//iconAlarm.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/alarm off.png"));
 			#endregion
 
 			#region Giới hạn bàn phím: cấm những phím nâng cao
@@ -63,41 +62,12 @@ namespace PCLauncher
 
 			Util.taskBarState = Util.AppBarState.AutoHide;
 			Task.Delay(300).ContinueWith(_ => Util.isTaskBarVisible = false);
-			new Wallpaper(this);
+			Wallpaper.Init(this);
 			SystemEvents.PowerModeChanged += PowerModeChanged;
 			calendar.MouseEnter += (_, __) => CalendarGotoNow();
 			calendar.MouseLeave += (_, __) => CalendarGotoNow();
 			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
-
-			#region Cài báo thức
-			if (string.IsNullOrEmpty(App.AlarmTime)) goto NO_ALARM;
-			var s = App.AlarmTime.Split(':');
-			if (s.Length != 2 || s[0].Length == 0 || s[1].Length == 0) goto NO_ALARM;
-			var now = DateTime.Now;
-			try { alarmTime = new DateTime(now.Year, now.Month, now.Day, Convert.ToByte(s[0]), Convert.ToByte(s[1]), 0); }
-			catch { goto NO_ALARM; }
-			if (alarmTime <= now) alarmTime = alarmTime.Value.AddDays(1);
-			Util.WakePC(alarmTime.Value);
-			SetAlarm();
-		NO_ALARM:;
-			#endregion
-		}
-
-
-		#region Báo thức
-		private DateTime? alarmTime;
-		private CancellationTokenSource cancelAlarm = new();
-
-
-		private async void SetAlarm()
-		{
-			var token = cancelAlarm.Token;
-			try { await Task.Delay(alarmTime.Value - DateTime.Now, token); } catch (OperationCanceledException) { return; }
-
-			alarmTime = alarmTime.Value.AddDays(1);
-			Util.WakePC(alarmTime.Value);
-			Task.Delay(1).ContinueWith(_ => SetAlarm());
-			new AlarmNotification(mouseKeyHook).Show();
+			Alarm.Init(mouseKeyHook);
 		}
 
 
@@ -107,15 +77,7 @@ namespace PCLauncher
 			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
 				Keyboard.Press(Key.MediaPlayPause);
 			if (IsActive) instance.CalendarGotoNow();
-			if (alarmTime == null) return;
-
-			double m = (DateTime.Now - alarmTime.Value).TotalMinutes;
-			if (m >= 0) alarmTime = alarmTime.Value.AddDays(1);
-			Util.WakePC(alarmTime.Value);
-			SetAlarm();
-			if (0 <= m && m < 3) new AlarmNotification(mouseKeyHook).Show();
 		}
-		#endregion
 
 
 		#region Cho phép/Cấm phím
@@ -504,12 +466,12 @@ namespace PCLauncher
 		#endregion
 
 
-		private sealed class Wallpaper
+		private static class Wallpaper
 		{
-			private readonly Desktop desktop;
-			public Wallpaper(Desktop desktop)
+			private static Desktop desktop;
+			public static void Init(Desktop desktop)
 			{
-				this.desktop = desktop;
+				Wallpaper.desktop = desktop;
 				uris.Clear();
 				foreach (string path in Directory.GetFiles(App.WallpaperPath))
 					if (IMAGE_EXTENSIONS.Contains(Path.GetExtension(path).ToUpper())) uris.Add(new Uri(path));
@@ -537,17 +499,17 @@ namespace PCLauncher
 
 
 			#region Show
-			private CancellationTokenSource cts;
+			private static CancellationTokenSource cts;
 			private static readonly List<string> IMAGE_EXTENSIONS = new()
 			{
 				".JPG",
 				".PNG",
 				".GIF"
 			};
-			private List<Uri> uris = new();
+			private static List<Uri> uris = new();
 
 
-			private async Task Show(CancellationToken token)
+			private static async Task Show(CancellationToken token)
 			{
 				int index = 0;
 				if (App.WallpaperRandom)

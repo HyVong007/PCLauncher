@@ -56,6 +56,9 @@ namespace PCLauncher.Games
 		private void Click_Tetris(object sender, RoutedEventArgs e) => Click_Game("tetris.nes");
 
 
+		private void Click_Billiard(object sender, RoutedEventArgs e) => Click_Game("billiard.nes");
+
+
 		private async void Click_CoTuong(object sender, RoutedEventArgs e)
 		{
 			IsEnabled = false;

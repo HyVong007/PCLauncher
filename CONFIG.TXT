@@ -13,4 +13,4 @@ NestopiaTVAspectRatio=352
 BluetoothInitialVolume=10
 AlarmTime=22:47
 AlarmPath=C:\PCLauncher\Resources\Coi bao thuc quan doi.mp4
-AlarmVolume=55
+AlarmVolume=50
