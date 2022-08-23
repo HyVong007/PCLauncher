@@ -68,6 +68,14 @@ namespace PCLauncher
 			calendar.MouseLeave += (_, __) => CalendarGotoNow();
 			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
 			Alarm.Init(mouseKeyHook);
+
+			#region Chuyển đổi loa
+			App.SystemSpeaker = string.IsNullOrEmpty(App.SystemSpeaker) ? "" : App.SystemSpeaker.Trim();
+			App.Headphone = string.IsNullOrEmpty(App.Headphone) ? "" : App.Headphone.Trim();
+			if (App.SystemSpeaker.Length == 0 || App.Headphone.Length == 0) switchSpeaker.Visibility = Visibility.Hidden;
+			currentSpeaker = App.Headphone;
+			Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
+			#endregion
 		}
 
 
@@ -77,6 +85,8 @@ namespace PCLauncher
 			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
 				Keyboard.Press(Key.MediaPlayPause);
 			if (IsActive) instance.CalendarGotoNow();
+			currentSpeaker = App.Headphone;
+			Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
 		}
 
 
@@ -597,6 +607,44 @@ namespace PCLauncher
 		{
 			calendar.DisplayMode = CalendarMode.Month;
 			calendar.SelectedDate = calendar.DisplayDate = cacheDate = DateTime.Now;
+		}
+		#endregion
+
+
+		#region Chuyển đổi âm thanh ra loa cố định và tai nghe
+		private static string currentSpeaker;
+		private static readonly ProcessStartInfo info = new()
+		{
+			FileName = $"{App.PATH}EndPointController.exe",
+			UseShellExecute = false,
+			CreateNoWindow = true
+		};
+
+		private async void Click_SwitchSpeaker(object _, RoutedEventArgs __)
+		{
+			IsEnabled = false;
+			info.Arguments = "";
+			info.RedirectStandardOutput = true;
+			var p = Process.Start(info);
+			string output = p.StandardOutput.ReadToEnd();
+			await Task.Delay(1000);
+
+			var lines = output.Split("\r\n");
+			currentSpeaker = currentSpeaker == App.SystemSpeaker ? App.Headphone : App.SystemSpeaker;
+			for (int i = lines.Length - 2; i >= 0; --i)
+			{
+				string speaker = lines[i].Split(':')[1].Trim();
+				if (speaker == currentSpeaker)
+				{
+					info.Arguments = $"{i + 1}";
+					info.RedirectStandardOutput = false;
+					Process.Start(info);
+					speakerImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/" +
+						$"{(currentSpeaker == App.SystemSpeaker ? "SystemSpeaker" : "Headphone")}.png"));
+					break;
+				}
+			}
+			IsEnabled = true;
 		}
 		#endregion
 	}

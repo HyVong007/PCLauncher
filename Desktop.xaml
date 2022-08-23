@@ -116,16 +116,29 @@
 			IsOpen="False"
 			Placement="Absolute"
 			HorizontalOffset="100000"
-			Width="100"
+			Width="240"
 			Height="100"
-			>
+			AllowsTransparency="True">
 
-			<Button
+			<StackPanel Orientation="Horizontal">
+				<Button
+				Width="100"
+				Height="100"
+				Name="switchSpeaker"
+				Margin="0,0,40,0"
+				Click="Click_SwitchSpeaker"
+				BorderThickness="0">
+					<Image
+						Name="speakerImage"
+						Source="/Resources/system speaker.png"/>
+				</Button>
+
+				<Button
 				Click="Click_X"
-				BorderThickness="0"
-				>
-				<Image Source="/Resources/close.png"/>
-			</Button>
+				BorderThickness="0">
+					<Image Source="/Resources/close.png"/>
+				</Button>
+			</StackPanel>
 		</Popup>
 
 		<!-- Date Time -->

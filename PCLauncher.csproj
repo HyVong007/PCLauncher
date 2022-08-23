@@ -34,11 +34,13 @@
     <None Remove="Resources\alarm on.png" />
     <None Remove="Resources\close.png" />
     <None Remove="Resources\co tuong.png" />
+    <None Remove="Resources\EndPointController.exe" />
     <None Remove="Resources\error.wav" />
     <None Remove="Resources\facebook.png" />
     <None Remove="Resources\game tank.png" />
     <None Remove="Resources\game tetris.gif" />
     <None Remove="Resources\game.png" />
+    <None Remove="Resources\headphone.png" />
     <None Remove="Resources\microphone.png" />
     <None Remove="Resources\music.png" />
     <None Remove="Resources\ocean.jpg" />
@@ -46,6 +48,7 @@
     <None Remove="Resources\search.png" />
     <None Remove="Resources\setting.png" />
     <None Remove="Resources\side pocket.png" />
+    <None Remove="Resources\SystemSpeaker.png" />
     <None Remove="Resources\TV.png" />
     <None Remove="Resources\video.png" />
     <None Remove="Resources\waiting.gif" />
@@ -96,6 +99,10 @@
     <Content Include="Games\Nestopia\unrar.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="EndPointController.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Resource Include="Resources\Headphone.png" />
     <Resource Include="Resources\side pocket.png" />
     <Resource Include="Resources\alarm off.png" />
     <Resource Include="Resources\alarm on.png" />
@@ -121,6 +128,7 @@
     <Resource Include="Resources\ocean.jpg" />
     <Resource Include="Resources\search.png" />
     <Resource Include="Resources\setting.png" />
+    <Resource Include="Resources\SystemSpeaker.png" />
     <Resource Include="Resources\TV.png" />
     <Resource Include="Resources\video.png" />
     <Resource Include="Resources\waiting.gif" />

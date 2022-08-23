@@ -36,6 +36,7 @@ namespace PCLauncher
 		public static string AlarmTime;
 		public static string AlarmPath;
 		public static int AlarmVolume;
+		public static string SystemSpeaker, Headphone;
 		#endregion
 	}
 }

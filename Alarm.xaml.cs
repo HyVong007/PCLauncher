@@ -12,10 +12,12 @@ namespace PCLauncher
 {
 	public partial class Alarm : Window
 	{
-		private readonly CancellationTokenSource cancelClosing = new();
 		private const int DURATION_SECONDS = 60;
-		public Alarm()
+		private readonly CancellationTokenSource cancelClosing = new();
+		private static Alarm instance;
+		public Alarm(bool sleepWhenTimeout)
 		{
+			instance = this;
 			InitializeComponent();
 			mouseKeyHook.KeyDown += MouseKeyEvent;
 			mouseKeyHook.MouseDown += MouseKeyEvent;
@@ -49,11 +51,20 @@ namespace PCLauncher
 					if (token.IsCancellationRequested) return;
 				}
 			}
+
+			async void DelayClosing()
+			{
+				try { await Task.Delay(DURATION_SECONDS * 1000, cancelClosing.Token); }
+				catch (OperationCanceledException) { Close(); return; }
+				Close();
+				if (sleepWhenTimeout) Util.SleepPC();
+			}
 		}
 
 
 		private void Window_Closed(object sender, EventArgs e)
 		{
+			instance = null;
 			mouseKeyHook.KeyDown -= MouseKeyEvent;
 			mouseKeyHook.MouseDown -= MouseKeyEvent;
 			mouseKeyHook.MouseMove -= MouseKeyEvent;
@@ -64,15 +75,10 @@ namespace PCLauncher
 		private void MouseKeyEvent(object? sender, EventArgs e)
 		{
 			if (e is not KeyEventArgs k ||
-				((k.KeyCode & Keys.VolumeUp) != Keys.VolumeUp && (k.KeyCode & Keys.VolumeDown) != Keys.VolumeDown)) cancelClosing.Cancel();
-		}
-
-
-		private async void DelayClosing()
-		{
-			try { await Task.Delay(DURATION_SECONDS * 1000, cancelClosing.Token); } catch (OperationCanceledException) { Close(); return; }
-			Close();
-			Util.SleepPC();
+			(
+				(k.KeyCode & Keys.VolumeUp) != Keys.VolumeUp && (k.KeyCode & Keys.VolumeDown) != Keys.VolumeDown
+				&& (k.KeyCode & Keys.MediaPlayPause) != Keys.MediaPlayPause
+			)) cancelClosing.Cancel();
 		}
 
 
@@ -87,7 +93,7 @@ namespace PCLauncher
 			try { alarmTime = new DateTime(now.Year, now.Month, now.Day, Convert.ToByte(s[0]), Convert.ToByte(s[1]), 0); }
 			catch { return; }
 
-			if (alarmTime <= now) alarmTime = alarmTime.AddDays(1);
+			if (alarmTime <= now) UpdateAlarmTime();
 			Util.WakePC(alarmTime);
 			SetAlarm();
 			Alarm.mouseKeyHook = mouseKeyHook;
@@ -105,20 +111,33 @@ namespace PCLauncher
 			cancelAlarm = new();
 			try { await Task.Delay(alarmTime - DateTime.Now, cancelAlarm.Token); } catch (OperationCanceledException) { return; }
 
-			alarmTime = alarmTime.AddDays(1);
+			UpdateAlarmTime();
 			Util.WakePC(alarmTime);
 			Task.Delay(1).ContinueWith(_ => SetAlarm());
-			new Alarm().Show();
+			new Alarm(false).Show();
 		}
 
 
 		private static void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
 		{
+			if (e.Mode == PowerModes.Suspend)
+			{
+				App.Current.Dispatcher.Invoke(() => instance?.cancelClosing.Cancel());
+				return;
+			}
+
 			double m = (DateTime.Now - alarmTime).TotalMinutes;
-			if (m >= 0) alarmTime = alarmTime.AddDays(1);
+			if (m >= 0) UpdateAlarmTime();
 			Util.WakePC(alarmTime);
 			SetAlarm();
-			if (0 <= m && m < 3) new Alarm().Show();
+			if (0 <= m && m < 3) new Alarm(true).Show();
+		}
+
+
+		private static void UpdateAlarmTime()
+		{
+			var now = DateTime.Now.AddDays(1);
+			alarmTime = new(now.Year, now.Month, now.Day, alarmTime.Hour, alarmTime.Minute, 0);
 		}
 		#endregion
 	}
