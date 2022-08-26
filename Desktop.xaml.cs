@@ -16,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Windows.Devices.Bluetooth;
+using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Enumeration;
 
 
@@ -29,6 +30,7 @@ namespace PCLauncher
 		/// Chế độ Administrator (nhấn vô icon Windows để kích hoạt)
 		/// </summary>
 		private static bool administrator;
+		private readonly ulong bluetoothMAC;
 
 
 		public Desktop()
@@ -60,6 +62,17 @@ namespace PCLauncher
 			Keyboard.StartListening();
 			#endregion
 
+			#region Chuyển đổi loa
+			App.SystemSpeaker = string.IsNullOrEmpty(App.SystemSpeaker) ? "" : App.SystemSpeaker.Trim();
+			App.Headphone = string.IsNullOrEmpty(App.Headphone) ? "" : App.Headphone.Trim();
+			if (App.SystemSpeaker.Length == 0 || App.Headphone.Length == 0) switchSpeaker.Visibility = Visibility.Hidden;
+			else
+			{
+				currentSpeaker = App.Headphone;
+				Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
+			}
+			#endregion
+
 			Util.taskBarState = Util.AppBarState.AutoHide;
 			Task.Delay(300).ContinueWith(_ => Util.isTaskBarVisible = false);
 			Wallpaper.Init(this);
@@ -68,14 +81,8 @@ namespace PCLauncher
 			calendar.MouseLeave += (_, __) => CalendarGotoNow();
 			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
 			Alarm.Init(mouseKeyHook);
-
-			#region Chuyển đổi loa
-			App.SystemSpeaker = string.IsNullOrEmpty(App.SystemSpeaker) ? "" : App.SystemSpeaker.Trim();
-			App.Headphone = string.IsNullOrEmpty(App.Headphone) ? "" : App.Headphone.Trim();
-			if (App.SystemSpeaker.Length == 0 || App.Headphone.Length == 0) switchSpeaker.Visibility = Visibility.Hidden;
-			currentSpeaker = App.Headphone;
-			Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
-			#endregion
+			try { bluetoothMAC = Util.ConvertMACAddress(App.AutoConnectBluetoothMAC); } catch { }
+			if (bluetoothMAC > 0) AutoConnectBluetooth();
 		}
 
 
@@ -85,8 +92,12 @@ namespace PCLauncher
 			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
 				Keyboard.Press(Key.MediaPlayPause);
 			if (IsActive) instance.CalendarGotoNow();
-			currentSpeaker = App.Headphone;
-			Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
+			if (switchSpeaker.Visibility == Visibility.Visible)
+			{
+				currentSpeaker = App.Headphone;
+				Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
+			}
+			if (bluetoothMAC > 0) AutoConnectBluetooth();
 		}
 
 
@@ -125,51 +136,6 @@ namespace PCLauncher
 		{
 			foreach (Key key in Enum.GetValues(typeof(Key)))
 				if (!key_allow.ContainsKey(key)) key_allow[key] = true;
-		}
-		#endregion
-
-
-		#region (Chưa thành công) Tắt volume khi kết nối loa Bluetooth, sau đó tăng lên từ từ
-		private DeviceWatcher deviceWatcher;
-		private readonly Dictionary<string, BluetoothDevice> id_AudioBluetooths = new();
-		private IntPtr handle;
-
-
-		private async void RegisterBluetoothEvents()
-		{
-			deviceWatcher = DeviceInformation.CreateWatcher(BluetoothDevice.GetDeviceSelector());
-			deviceWatcher.Added += async (_, info) =>
-			{
-				var d = await BluetoothDevice.FromIdAsync(info.Id);
-				if ((d.ClassOfDevice.ServiceCapabilities & BluetoothServiceCapabilities.AudioService) == BluetoothServiceCapabilities.AudioService)
-					(id_AudioBluetooths[d.DeviceId] = d).ConnectionStatusChanged += AdjustVolume;
-			};
-			deviceWatcher.Removed += (_, info) =>
-			{
-				if (id_AudioBluetooths.TryGetValue(info.Id, out BluetoothDevice d))
-				{
-					d.Dispose();
-					id_AudioBluetooths.Remove(info.Id);
-				}
-			};
-			deviceWatcher.Start();
-
-
-			async void AdjustVolume(BluetoothDevice d, object _)
-			{
-				if (d.ConnectionStatus == BluetoothConnectionStatus.Disconnected) return;
-
-				App.Current.Dispatcher.Invoke(async () =>
-				{
-					handle = new WindowInteropHelper(this).Handle;
-					for (int i = 0; i < 100; ++i) Util.VolumeDown(handle);
-					for (int i = 0; i < App.BluetoothInitialVolume; i += 2)
-					{
-						Util.VolumeUp(handle);
-						await Task.Delay(100);
-					}
-				});
-			}
 		}
 		#endregion
 
@@ -227,12 +193,11 @@ namespace PCLauncher
 		{
 			mouseKeyHook.Dispose();
 			Keyboard.StopListening();
+			SystemEvents.PowerModeChanged -= PowerModeChanged;
 #if DEBUG
 			Util.taskBarState = Util.AppBarState.AlwaysOnTop;
 			Util.isTaskBarVisible = true;
 #endif
-			SystemEvents.PowerModeChanged -= PowerModeChanged;
-			foreach (var d in id_AudioBluetooths.Values) d.Dispose();
 		}
 
 
@@ -622,7 +587,7 @@ namespace PCLauncher
 
 		private async void Click_SwitchSpeaker(object _, RoutedEventArgs __)
 		{
-			IsEnabled = false;
+			switchSpeaker.Visibility = Visibility.Hidden;
 			info.Arguments = "";
 			info.RedirectStandardOutput = true;
 			var p = Process.Start(info);
@@ -632,20 +597,40 @@ namespace PCLauncher
 			var lines = output.Split("\r\n");
 			currentSpeaker = currentSpeaker == App.SystemSpeaker ? App.Headphone : App.SystemSpeaker;
 			for (int i = lines.Length - 2; i >= 0; --i)
-			{
-				string speaker = lines[i].Split(':')[1].Trim();
-				if (speaker == currentSpeaker)
+				if (lines[i].Split(':')[1].Trim() == currentSpeaker)
 				{
 					info.Arguments = $"{i + 1}";
 					info.RedirectStandardOutput = false;
 					Process.Start(info);
 					speakerImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/" +
 						$"{(currentSpeaker == App.SystemSpeaker ? "SystemSpeaker" : "Headphone")}.png"));
+					await Task.Delay(1000);
 					break;
 				}
-			}
-			IsEnabled = true;
+			switchSpeaker.Visibility = Visibility.Visible;
 		}
 		#endregion
+
+
+		private CancellationTokenSource ctsBluetooth = new();
+		private async void AutoConnectBluetooth()
+		{
+			ctsBluetooth.Cancel();
+			ctsBluetooth.Dispose();
+			var token = (ctsBluetooth = new()).Token;
+			var b = await BluetoothDevice.FromBluetoothAddressAsync(bluetoothMAC);
+			if (token.IsCancellationRequested || b == null) return;
+			await b.DeviceInformation.Pairing.UnpairAsync();
+			if (token.IsCancellationRequested) return;
+			b.DeviceInformation.Pairing.Custom.PairingRequested += Custom_PairingRequested;
+			await b.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
+
+
+			void Custom_PairingRequested(DeviceInformationCustomPairing sender, DevicePairingRequestedEventArgs args)
+			{
+				b.DeviceInformation.Pairing.Custom.PairingRequested -= Custom_PairingRequested;
+				args.Accept();
+			}
+		}
 	}
 }

@@ -37,6 +37,7 @@ namespace PCLauncher
 		public static string AlarmPath;
 		public static int AlarmVolume;
 		public static string SystemSpeaker, Headphone;
+		public static string AutoConnectBluetoothMAC;
 		#endregion
 	}
 }

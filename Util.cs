@@ -296,6 +296,10 @@ namespace PCLauncher
 		public static void VolumeDown(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_DOWN);
 		public static void VolumeUp(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_UP);
 		#endregion
+
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ulong ConvertMACAddress(string mac) => Convert.ToUInt64(mac.Replace(":", ""), 16);
 	}
 
 
