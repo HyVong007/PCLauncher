@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Windows.Foundation;
@@ -300,6 +302,23 @@ namespace PCLauncher
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ulong ConvertMACAddress(string mac) => Convert.ToUInt64(mac.Replace(":", ""), 16);
+
+
+		#region Bật/Tắt màn hình
+		private enum MonitorState
+		{
+			MonitorStateOn = -1,
+			MonitorStateOff = 2,
+			MonitorStateStandBy = 1
+		}
+
+
+		[DllImport("user32.dll")]
+		private static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);
+
+
+		public static void TurnOffMonitor() => SendMessage(0xFFFF, 0x112, 0xF170, 2);
+		#endregion
 	}
 
 

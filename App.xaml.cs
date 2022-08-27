@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Interop;
@@ -12,6 +13,7 @@ namespace PCLauncher
 		public static readonly string PATH = AppDomain.CurrentDomain.BaseDirectory;
 		private void Application_Startup(object sender, StartupEventArgs e)
 		{
+			if (File.Exists($"{PATH}ERROR.txt")) File.Delete($"{PATH}ERROR.txt");
 			$"{PATH}CONFIG.txt".ReadConfig<App>();
 			(MainWindow = new Desktop()).Show();
 		}

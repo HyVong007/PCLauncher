@@ -62,14 +62,16 @@ namespace PCLauncher
 			Keyboard.StartListening();
 			#endregion
 
-			#region Chuyển đổi loa
+			#region Kết nối Bluetooth và chuyển đổi loa
 			App.SystemSpeaker = string.IsNullOrEmpty(App.SystemSpeaker) ? "" : App.SystemSpeaker.Trim();
 			App.Headphone = string.IsNullOrEmpty(App.Headphone) ? "" : App.Headphone.Trim();
 			if (App.SystemSpeaker.Length == 0 || App.Headphone.Length == 0) switchSpeaker.Visibility = Visibility.Hidden;
-			else
+			try { bluetoothMAC = Util.ConvertMACAddress(App.AutoConnectBluetoothMAC); } catch { }
+			if (bluetoothMAC > 0) ConnectBluetoothThenSwitchSpeaker();
+			else if (switchSpeaker.Visibility == Visibility.Visible)
 			{
 				currentSpeaker = App.Headphone;
-				Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
+				Click_SwitchSpeaker(null, null);
 			}
 			#endregion
 
@@ -81,8 +83,6 @@ namespace PCLauncher
 			calendar.MouseLeave += (_, __) => CalendarGotoNow();
 			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
 			Alarm.Init(mouseKeyHook);
-			try { bluetoothMAC = Util.ConvertMACAddress(App.AutoConnectBluetoothMAC); } catch { }
-			if (bluetoothMAC > 0) AutoConnectBluetooth();
 		}
 
 
@@ -92,12 +92,12 @@ namespace PCLauncher
 			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
 				Keyboard.Press(Key.MediaPlayPause);
 			if (IsActive) instance.CalendarGotoNow();
-			if (switchSpeaker.Visibility == Visibility.Visible)
+			if (bluetoothMAC > 0) ConnectBluetoothThenSwitchSpeaker();
+			else if (switchSpeaker.Visibility == Visibility.Visible)
 			{
 				currentSpeaker = App.Headphone;
-				Click_SwitchSpeaker(null, null); // Chuyển audio về loa chính (System)
+				Click_SwitchSpeaker(null, null);
 			}
-			if (bluetoothMAC > 0) AutoConnectBluetooth();
 		}
 
 
@@ -590,10 +590,8 @@ namespace PCLauncher
 			switchSpeaker.Visibility = Visibility.Hidden;
 			info.Arguments = "";
 			info.RedirectStandardOutput = true;
-			var p = Process.Start(info);
-			string output = p.StandardOutput.ReadToEnd();
-			await Task.Delay(1000);
-
+			string output = Process.Start(info).StandardOutput.ReadToEnd();
+			await Task.Delay(500);
 			var lines = output.Split("\r\n");
 			currentSpeaker = currentSpeaker == App.SystemSpeaker ? App.Headphone : App.SystemSpeaker;
 			for (int i = lines.Length - 2; i >= 0; --i)
@@ -604,7 +602,7 @@ namespace PCLauncher
 					Process.Start(info);
 					speakerImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/" +
 						$"{(currentSpeaker == App.SystemSpeaker ? "SystemSpeaker" : "Headphone")}.png"));
-					await Task.Delay(1000);
+					await Task.Delay(500);
 					break;
 				}
 			switchSpeaker.Visibility = Visibility.Visible;
@@ -613,24 +611,22 @@ namespace PCLauncher
 
 
 		private CancellationTokenSource ctsBluetooth = new();
-		private async void AutoConnectBluetooth()
+		private async void ConnectBluetoothThenSwitchSpeaker()
 		{
 			ctsBluetooth.Cancel();
 			ctsBluetooth.Dispose();
 			var token = (ctsBluetooth = new()).Token;
-			var b = await BluetoothDevice.FromBluetoothAddressAsync(bluetoothMAC);
+			using var b = await BluetoothDevice.FromBluetoothAddressAsync(bluetoothMAC);
 			if (token.IsCancellationRequested || b == null) return;
 			await b.DeviceInformation.Pairing.UnpairAsync();
 			if (token.IsCancellationRequested) return;
-			b.DeviceInformation.Pairing.Custom.PairingRequested += Custom_PairingRequested;
+			b.DeviceInformation.Pairing.Custom.PairingRequested += (_, args) => args.Accept();
 			await b.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
-
-
-			void Custom_PairingRequested(DeviceInformationCustomPairing sender, DevicePairingRequestedEventArgs args)
-			{
-				b.DeviceInformation.Pairing.Custom.PairingRequested -= Custom_PairingRequested;
-				args.Accept();
-			}
+			if (token.IsCancellationRequested) return;
+			await Task.Delay(1000);
+			if (token.IsCancellationRequested || switchSpeaker.Visibility == Visibility.Hidden) return;
+			currentSpeaker = App.Headphone;
+			Click_SwitchSpeaker(null, null);
 		}
 	}
 }
