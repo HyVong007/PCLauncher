@@ -4,8 +4,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms;
 using System.Windows.Threading;
+using form = System.Windows.Forms;
 
 
 namespace PCLauncher
@@ -25,7 +25,7 @@ namespace PCLauncher
 			DelayClosing();
 
 			#region Phát video
-			for (int i = 0; i < 100; ++i) Keyboard.Press(Key.VolumeDown);
+			for (int i = 0; i < 100; ++i) Util.Press(form.Keys.VolumeDown);
 			player.Source = new(App.AlarmPath, UriKind.Absolute);
 			player.MediaEnded += (_, __) => player.Position = new TimeSpan(0, 0, 0);
 			#endregion
@@ -46,7 +46,7 @@ namespace PCLauncher
 				var token = cancelClosing.Token;
 				for (int i = 0; i < App.AlarmVolume; i += 2)
 				{
-					Keyboard.Press(Key.VolumeUp);
+					Util.Press(form.Keys.VolumeUp);
 					await Task.Delay(500);
 					if (token.IsCancellationRequested) return;
 				}
@@ -74,10 +74,9 @@ namespace PCLauncher
 
 		private void MouseKeyEvent(object? sender, EventArgs e)
 		{
-			if (e is not KeyEventArgs k ||
+			if (e is not form.KeyEventArgs k ||
 			(
-				(k.KeyCode & Keys.VolumeUp) != Keys.VolumeUp && (k.KeyCode & Keys.VolumeDown) != Keys.VolumeDown
-				&& (k.KeyCode & Keys.MediaPlayPause) != Keys.MediaPlayPause
+				(k.KeyCode & form.Keys.VolumeUp) != form.Keys.VolumeUp && (k.KeyCode & form.Keys.VolumeDown) != form.Keys.VolumeDown
 			)) cancelClosing.Cancel();
 		}
 

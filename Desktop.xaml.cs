@@ -11,13 +11,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Enumeration;
+using form = System.Windows.Forms;
 
 
 namespace PCLauncher
@@ -26,17 +25,13 @@ namespace PCLauncher
 	{
 		private static Desktop instance;
 		private static readonly IKeyboardMouseEvents mouseKeyHook = Hook.GlobalEvents();
-		/// <summary>
-		/// Chế độ Administrator (nhấn vô icon Windows để kích hoạt)
-		/// </summary>
-		private static bool administrator;
 		private readonly ulong bluetoothMAC;
-
-
 		public Desktop()
 		{
 			instance = this;
 			InitializeComponent();
+			soundKb = new SoundPlayer($"{App.PATH}Resources/error.wav");
+			soundKb.LoadAsync();
 
 			#region Gắn hình ảnh cho Icon
 			iconYoutube.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/youtube.png"));
@@ -46,20 +41,6 @@ namespace PCLauncher
 			iconPhoto.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/photo.png"));
 			iconGame.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/game.png"));
 			iconWindows.GetChild<Image>().Source = new BitmapImage(new Uri("pack://application:,,,/Resources/windows.ico"));
-			#endregion
-
-			#region Giới hạn bàn phím: cấm những phím nâng cao
-			var soundPlayer = new SoundPlayer($"{App.PATH}Resources/error.wav");
-			Closed += (_, __) => soundPlayer.Dispose();
-			soundPlayer.LoadAsync();
-			var task = Task.CompletedTask;
-			Keyboard.allowKey = key =>
-			{
-				if (administrator || key_allow[key]) return true;
-				if (task.IsCompleted) task = Task.Run(soundPlayer.Play);
-				return false;
-			};
-			Keyboard.StartListening();
 			#endregion
 
 			#region Kết nối Bluetooth và chuyển đổi loa
@@ -81,7 +62,7 @@ namespace PCLauncher
 			SystemEvents.PowerModeChanged += PowerModeChanged;
 			calendar.MouseEnter += (_, __) => CalendarGotoNow();
 			calendar.MouseLeave += (_, __) => CalendarGotoNow();
-			calendar.MouseWheel += (_, e) => Keyboard.Press(e.Delta > 0 ? Key.Up : Key.Down);
+			calendar.MouseWheel += (_, e) => Util.Press(e.Delta > 0 ? form.Keys.Up : form.Keys.Down);
 			Alarm.Init(mouseKeyHook);
 		}
 
@@ -89,8 +70,6 @@ namespace PCLauncher
 		private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
 		{
 			if (e.Mode == PowerModes.Suspend) return;
-			if (Process.GetProcessesByName("msedge").Length != 0 || Process.GetProcessesByName("chrome").Length != 0)
-				Keyboard.Press(Key.MediaPlayPause);
 			if (IsActive) instance.CalendarGotoNow();
 			if (bluetoothMAC > 0) ConnectBluetoothThenSwitchSpeaker();
 			else if (switchSpeaker.Visibility == Visibility.Visible)
@@ -101,41 +80,27 @@ namespace PCLauncher
 		}
 
 
-		#region Cho phép/Cấm phím
-		private static readonly Dictionary<Key, bool> key_allow = new()
+		#region Cấm phím
+		private static readonly List<form.Keys> limitedKeys = new()
 		{
 #if !DEBUG
-			{ Key.LMenu, false },
-			{ Key.RMenu,false },
-			{ Key.F4,false },
+			Keys.LMenu, Keys.RMenu, Keys.F4,
 #endif
-			{ Key.F1,false },
-			{ Key.F2,false },
-			{ Key.F3,false },
-			{ Key.F5,false },
-			{ Key.F6,false },
-			{ Key.F7,false },
-			{ Key.F8,false },
-			{ Key.F9,false },
-			{ Key.F10,false },
-			{ Key.F11,false },
-			{ Key.F12,false },
-			{ Key.SelectMedia,false },
-			{ Key.LaunchMail,false },
-			{ Key.VolumeMute,false },
-			{ Key.BrowserSearch,false },
-			{ Key.BrowserHome,false },
-			{ Key.LControlKey,false },
-			{ Key.RControlKey,false },
-			{ Key.LWin,false },
-			{ Key.RWin,false }
+			Keys.F1, Keys.F2, Keys.F3, Keys.F5, Keys.F6, Keys.F7, Keys.F8, Keys.F9, Keys.F10, Keys.F11, Keys.F12,
+			Keys.SelectMedia, Keys.LaunchMail, Keys.VolumeMute, Keys.BrowserSearch, Keys.BrowserHome, Keys.LControlKey, Keys.RControlKey, Keys.LWin, Keys.RWin
 		};
 
 
-		static Desktop()
+		private bool limitKeyboard;
+		private static SoundPlayer soundKb;
+		private static Task taskKb = Task.CompletedTask;
+		private static void LimitKeyboard(object? sender, form.KeyEventArgs arg)
 		{
-			foreach (Key key in Enum.GetValues(typeof(Key)))
-				if (!key_allow.ContainsKey(key)) key_allow[key] = true;
+			if (limitedKeys.Contains(arg.KeyCode))
+			{
+				arg.SuppressKeyPress = true;
+				if (taskKb.IsCompleted) taskKb = Task.Run(soundKb.Play);
+			}
 		}
 		#endregion
 
@@ -144,7 +109,11 @@ namespace PCLauncher
 		private void Window_Activated(object sender, EventArgs e)
 		{
 			AutoHideIcon(true);
-			administrator = false;
+			if (!limitKeyboard)
+			{
+				limitKeyboard = true;
+				mouseKeyHook.KeyDown += LimitKeyboard;
+			}
 			Util.isTaskBarVisible = false;
 
 			#region Maximize các ứng dụng đang chạy (nếu có)
@@ -192,7 +161,7 @@ namespace PCLauncher
 		private void Window_Closed(object sender, EventArgs e)
 		{
 			mouseKeyHook.Dispose();
-			Keyboard.StopListening();
+			soundKb.Dispose();
 			SystemEvents.PowerModeChanged -= PowerModeChanged;
 #if DEBUG
 			Util.taskBarState = Util.AppBarState.AlwaysOnTop;
@@ -329,9 +298,10 @@ namespace PCLauncher
 		private void Click_Windows_Icon(object sender, RoutedEventArgs e)
 		{
 			IsEnabled = false;
-			administrator = true;
+			mouseKeyHook.KeyDown -= LimitKeyboard;
+			limitKeyboard = false;
 			Util.isTaskBarVisible = true;
-			Keyboard.Press(Key.LWin);
+			Util.Press(form.Keys.LWin);
 			IsEnabled = true;
 		}
 
@@ -413,9 +383,9 @@ namespace PCLauncher
 
 				instance.xButton.IsOpen = xTimer.IsEnabled = true;
 				xTime = 0;
-				mouseKeyHook.KeyDown += OnMouseKeyEvents;
-				mouseKeyHook.MouseMove += OnMouseKeyEvents;
-				mouseKeyHook.MouseDown += OnMouseKeyEvents;
+				mouseKeyHook.KeyDown += XPopup_OnMouseKeyEvents;
+				mouseKeyHook.MouseMove += XPopup_OnMouseKeyEvents;
+				mouseKeyHook.MouseDown += XPopup_OnMouseKeyEvents;
 			}
 
 			remove
@@ -425,14 +395,14 @@ namespace PCLauncher
 
 				instance.xButton.IsOpen = xTimer.IsEnabled = false;
 				xTime = 0;
-				mouseKeyHook.KeyDown -= OnMouseKeyEvents;
-				mouseKeyHook.MouseMove -= OnMouseKeyEvents;
-				mouseKeyHook.MouseDown -= OnMouseKeyEvents;
+				mouseKeyHook.KeyDown -= XPopup_OnMouseKeyEvents;
+				mouseKeyHook.MouseMove -= XPopup_OnMouseKeyEvents;
+				mouseKeyHook.MouseDown -= XPopup_OnMouseKeyEvents;
 			}
 		}
 
 
-		private static void OnMouseKeyEvents(object? sender, EventArgs arg)
+		private static void XPopup_OnMouseKeyEvents(object? sender, EventArgs arg)
 		{
 			xTime = 0;
 			if (!instance.xButton.IsOpen) instance.xButton.IsOpen = true;
@@ -617,14 +587,19 @@ namespace PCLauncher
 			ctsBluetooth.Dispose();
 			var token = (ctsBluetooth = new()).Token;
 			using var b = await BluetoothDevice.FromBluetoothAddressAsync(bluetoothMAC);
-			if (token.IsCancellationRequested || b == null) return;
-			await b.DeviceInformation.Pairing.UnpairAsync();
 			if (token.IsCancellationRequested) return;
-			b.DeviceInformation.Pairing.Custom.PairingRequested += (_, args) => args.Accept();
-			await b.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
-			if (token.IsCancellationRequested) return;
-			await Task.Delay(1000);
-			if (token.IsCancellationRequested || switchSpeaker.Visibility == Visibility.Hidden) return;
+			if (b != null)
+			{
+				await b.DeviceInformation.Pairing.UnpairAsync();
+				if (token.IsCancellationRequested) return;
+				b.DeviceInformation.Pairing.Custom.PairingRequested += (_, args) => args.Accept();
+				await b.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
+				if (token.IsCancellationRequested) return;
+				await Task.Delay(1000);
+				if (token.IsCancellationRequested) return;
+			}
+
+			if (switchSpeaker.Visibility == Visibility.Hidden) return;
 			currentSpeaker = App.Headphone;
 			Click_SwitchSpeaker(null, null);
 		}

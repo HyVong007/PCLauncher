@@ -123,7 +123,12 @@ namespace PCLauncher.Games
 
 		private void ClickX()
 		{
-			if (CloseNestopia()) return;
+			if (CloseNestopia())
+			{
+				Activate();
+				return;
+			}
+
 			Desktop.clickX -= ClickX;
 			SystemEvents.PowerModeChanged -= PowerModeChanged;
 			Close();

@@ -16,4 +16,4 @@ AlarmPath=C:\PCLauncher\Resources\Coi bao thuc quan doi.mp4
 AlarmVolume=50
 SystemSpeaker=Speakers (High Definition Audio Device)
 Headphone=Headphones (DW-CT14+ Stereo)
-AutoConnectBluetoothMAC=38:62:5b:f9:c7:d9
+AutoConnectBluetoothMAC= 
