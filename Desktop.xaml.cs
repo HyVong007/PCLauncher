@@ -6,16 +6,17 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Enumeration;
+using Windows.System.Power;
 using form = System.Windows.Forms;
 
 
@@ -81,13 +82,14 @@ namespace PCLauncher
 
 
 		#region Cấm phím
-		private static readonly List<form.Keys> limitedKeys = new()
+		private static readonly IReadOnlyList<form.Keys> limitedKeys = new List<form.Keys>
 		{
 #if !DEBUG
-			Keys.LMenu, Keys.RMenu, Keys.F4,
+			form.Keys.LMenu, form.Keys.RMenu, form.Keys.F4,
 #endif
-			Keys.F1, Keys.F2, Keys.F3, Keys.F5, Keys.F6, Keys.F7, Keys.F8, Keys.F9, Keys.F10, Keys.F11, Keys.F12,
-			Keys.SelectMedia, Keys.LaunchMail, Keys.VolumeMute, Keys.BrowserSearch, Keys.BrowserHome, Keys.LControlKey, Keys.RControlKey, Keys.LWin, Keys.RWin
+			form.Keys.F1, form.Keys.F2, form.Keys.F3, form.Keys.F5, form.Keys.F6, form.Keys.F7, form.Keys.F8, form.Keys.F9,
+			form.Keys.F10, form.Keys.F11, form.Keys.F12,form.Keys.SelectMedia, form.Keys.LaunchMail, form.Keys.VolumeMute,
+			form.Keys.BrowserSearch, form.Keys.BrowserHome, form.Keys.LControlKey, form.Keys.RControlKey, form.Keys.LWin, form.Keys.RWin
 		};
 
 
@@ -603,5 +605,12 @@ namespace PCLauncher
 			currentSpeaker = App.Headphone;
 			Click_SwitchSpeaker(null, null);
 		}
+
+
+		#region Xử lý sau khi cúp điện đột ngột
+		async void A()
+		{
+		}
+		#endregion
 	}
 }

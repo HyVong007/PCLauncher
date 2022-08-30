@@ -83,14 +83,14 @@ namespace PCLauncher
 
 		#region Static
 		private static IKeyboardMouseEvents mouseKeyHook;
-		public static void Init(IKeyboardMouseEvents mouseKeyHook)
+		public static async void Init(IKeyboardMouseEvents mouseKeyHook)
 		{
-			if (string.IsNullOrEmpty(App.AlarmTime)) return;
-			var s = App.AlarmTime.Split(':');
-			if (s.Length != 2 || s[0].Length == 0 || s[1].Length == 0) return;
 			var now = DateTime.Now;
+			if (string.IsNullOrEmpty(App.AlarmTime)) goto AUTO_SLEEP;
+			var s = App.AlarmTime.Split(':');
+			if (s.Length != 2 || s[0].Length == 0 || s[1].Length == 0) goto AUTO_SLEEP;
 			try { alarmTime = new DateTime(now.Year, now.Month, now.Day, Convert.ToByte(s[0]), Convert.ToByte(s[1]), 0); }
-			catch { return; }
+			catch { goto AUTO_SLEEP; }
 
 			if (alarmTime <= now) UpdateAlarmTime();
 			Util.WakePC(alarmTime);
@@ -98,6 +98,28 @@ namespace PCLauncher
 			Alarm.mouseKeyHook = mouseKeyHook;
 			SystemEvents.PowerModeChanged += PowerModeChanged;
 			App.Current.Exit += (_, __) => SystemEvents.PowerModeChanged -= PowerModeChanged;
+
+		AUTO_SLEEP:
+			if (alarmTime != default && (alarmTime - now).TotalMinutes < 6) return;
+
+			using var cts = new CancellationTokenSource();
+			SystemEvents.PowerModeChanged += e;
+			mouseKeyHook.KeyDown += e;
+			mouseKeyHook.MouseDown += e;
+			mouseKeyHook.MouseMove += e;
+			try { await Task.Delay(3 * 60_000, cts.Token); }
+			catch (OperationCanceledException) { return; }
+			finally
+			{
+				SystemEvents.PowerModeChanged -= e;
+				mouseKeyHook.KeyDown -= e;
+				mouseKeyHook.MouseDown -= e;
+				mouseKeyHook.MouseMove -= e;
+			}
+
+
+			Util.SleepPC();
+			void e(object? _, EventArgs __) => cts.Cancel();
 		}
 
 
@@ -121,7 +143,7 @@ namespace PCLauncher
 		{
 			if (e.Mode == PowerModes.Suspend)
 			{
-				App.Current.Dispatcher.Invoke(() => instance?.cancelClosing.Cancel());
+				instance?.cancelClosing.Cancel();
 				return;
 			}
 

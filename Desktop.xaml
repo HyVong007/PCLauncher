@@ -116,17 +116,17 @@
 			IsOpen="False"
 			Placement="Absolute"
 			HorizontalOffset="100000"
-			Width="160"
-			Height="70"
+			Width="240"
+			Height="100"
 			AllowsTransparency="True"
 			>
 
 			<StackPanel Orientation="Horizontal">
 				<Button
-				Width="70"
-				Height="70"
+				Width="100"
+				Height="100"
 				Name="switchSpeaker"
-				Margin="0,0,20,0"
+				Margin="0,0,40,0"
 				Click="Click_SwitchSpeaker"
 				BorderThickness="0">
 					<Image
