@@ -1,4 +1,6 @@
-﻿using System;
+﻿using CSCore.CoreAudioAPI;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -60,6 +62,13 @@ namespace PCLauncher
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool Contains<T>(this IReadOnlyList<T> list, T item) => (list as List<T>).Contains(item);
+
+
+		public static bool Contains<T>(this T[] array, T item)
+		{
+			for (int i = array.Length - 1; i >= 0; --i) if (array[i].Equals(item)) return true;
+			return false;
+		}
 
 
 		public enum SW : int
@@ -328,6 +337,31 @@ namespace PCLauncher
 			foreach (var key in keys) keybd_event((byte)key, 0, 2, 0);
 		}
 
+
+		public static async Task MuteApp(bool isMuted, params string[] appNames)
+		{
+			await Task.Run(() =>
+			{
+				foreach (var sessionManager in GetDefaultAudioSessionManager2(DataFlow.Render))
+					using (sessionManager)
+						foreach (var session in sessionManager.GetSessionEnumerator())
+						{
+							using var sessionControl = session.QueryInterface<AudioSessionControl2>();
+							if (appNames.Contains(Process.GetProcessById(sessionControl.ProcessID).ProcessName))
+							{
+								using var simpleVolume = session.QueryInterface<SimpleAudioVolume>();
+								simpleVolume.IsMuted = isMuted;
+							}
+						}
+			});
+
+			static IEnumerable<AudioSessionManager2> GetDefaultAudioSessionManager2(DataFlow dataFlow)
+			{
+				using var enumerator = new MMDeviceEnumerator();
+				foreach (var device in enumerator.EnumAudioEndpoints(dataFlow, DeviceState.Active))
+					yield return AudioSessionManager2.FromMMDevice(device);
+			}
+		}
 	}
 
 

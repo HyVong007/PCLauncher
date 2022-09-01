@@ -40,7 +40,9 @@ namespace PCLauncher
 			timer.Start();
 			#endregion
 
+
 			IncreaseVolume();
+			Util.MuteApp(true, "msedge", "chrome", "mpc-be64");
 			async void IncreaseVolume()
 			{
 				var token = cancelClosing.Token;
@@ -69,6 +71,7 @@ namespace PCLauncher
 			mouseKeyHook.MouseDown -= MouseKeyEvent;
 			mouseKeyHook.MouseMove -= MouseKeyEvent;
 			cancelClosing.Dispose();
+			Util.MuteApp(false, "msedge", "chrome", "mpc-be64");
 		}
 
 

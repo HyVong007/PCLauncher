@@ -605,12 +605,5 @@ namespace PCLauncher
 			currentSpeaker = App.Headphone;
 			Click_SwitchSpeaker(null, null);
 		}
-
-
-		#region Xử lý sau khi cúp điện đột ngột
-		async void A()
-		{
-		}
-		#endregion
 	}
 }
