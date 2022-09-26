@@ -1,10 +1,7 @@
 ﻿using Microsoft.Win32;
 using SharpDX.XInput;
-using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Threading;
 
 
@@ -137,7 +134,7 @@ namespace PCLauncher.Games
 
 		private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
 		{
-			if (e.Mode == PowerModes.Resume) CloseNestopia();
+			if (e.Mode == PowerModes.Resume) ClickX();
 		}
 	}
 }

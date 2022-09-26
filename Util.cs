@@ -1,15 +1,9 @@
 ﻿using CSCore.CoreAudioAPI;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Media;
 using Windows.Foundation;
 using form = System.Windows.Forms;
@@ -160,7 +154,7 @@ namespace PCLauncher
 		}
 
 
-		private static AppBarData appBarData = new AppBarData()
+		private static AppBarData appBarData = new()
 		{
 			hWnd = taskBarHandle
 		};
@@ -229,8 +223,7 @@ namespace PCLauncher
 
 		public static T GetChild<T>(this Visual element) where T : Visual
 		{
-			var type = typeof(T);
-			if (element.GetType() == type) return element as T;
+			if (element.GetType() == typeof(T)) return element as T;
 			Visual foundElement = null;
 			if (element is FrameworkElement) (element as FrameworkElement).ApplyTemplate();
 			for (int i = VisualTreeHelper.GetChildrenCount(element) - 1; i >= 0; --i)
@@ -293,25 +286,8 @@ namespace PCLauncher
 		}
 
 
-		#region Sound Volume
-		private const int APPCOMMAND_VOLUME_MUTE = 0x80000;
-		private const int APPCOMMAND_VOLUME_UP = 0xA0000;
-		private const int APPCOMMAND_VOLUME_DOWN = 0x90000;
-		private const int WM_APPCOMMAND = 0x319;
-
-
-		[DllImport("user32.dll")]
-		private static extern IntPtr SendMessageW(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
-
-
-		public static void VolumeMute(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_MUTE);
-		public static void VolumeDown(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_DOWN);
-		public static void VolumeUp(IntPtr handle) => SendMessageW(handle, WM_APPCOMMAND, handle, (IntPtr)APPCOMMAND_VOLUME_UP);
-		#endregion
-
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ulong ConvertMACAddress(string mac) => Convert.ToUInt64(mac.Replace(":", ""), 16);
+		public static ulong ToMACAddress(this string mac) => Convert.ToUInt64(mac.Replace(":", ""), 16);
 
 
 		#region Bật/Tắt màn hình
@@ -338,7 +314,7 @@ namespace PCLauncher
 		}
 
 
-		public static async Task MuteApp(bool isMuted, params string[] appNames)
+		public static async void MuteApp(bool isMuted, params string[] appNames)
 		{
 			await Task.Run(() =>
 			{

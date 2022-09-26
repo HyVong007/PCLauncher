@@ -10,15 +10,17 @@
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
     <UseWindowsForms>True</UseWindowsForms>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
-    <ImplicitUsings>disable</ImplicitUsings>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="CrashHandler\**" />
-    <EmbeddedResource Remove="CrashHandler\**" />
-    <None Remove="CrashHandler\**" />
-    <Page Remove="CrashHandler\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<Using Remove="System.Drawing"/>
+		<Using Remove="System.Linq"/>
+		<Using Remove="System.Windows.Forms"/>
+		<Using Remove="System.Drawing"/>
+		<Using Include="System.Windows"/>
+		<Using Include="System.Collections"/>
+	</ItemGroup>
 
   <ItemGroup>
     <None Remove="CONFIG.TXT" />
@@ -52,6 +54,7 @@
     <None Remove="Resources\music.png" />
     <None Remove="Resources\ocean.jpg" />
     <None Remove="Resources\photo.png" />
+    <None Remove="Resources\screen.png" />
     <None Remove="Resources\search.png" />
     <None Remove="Resources\setting.png" />
     <None Remove="Resources\side pocket.png" />
@@ -110,6 +113,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Resource Include="Resources\Headphone.png" />
+    <Resource Include="Resources\screen.png" />
     <Resource Include="Resources\side pocket.png" />
     <Resource Include="Resources\alarm off.png" />
     <Resource Include="Resources\alarm on.png" />

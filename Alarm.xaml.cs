@@ -1,9 +1,5 @@
 ﻿using Gma.System.MouseKeyHook;
 using Microsoft.Win32;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Threading;
 using form = System.Windows.Forms;
 
@@ -32,14 +28,10 @@ namespace PCLauncher
 
 			#region Đếm ngược
 			int seconds = DURATION_SECONDS;
-			var timer = new DispatcherTimer(new TimeSpan(0, 0, 1), DispatcherPriority.Normal, (_, __) =>
-			{
-				time.Text = $"{seconds--}";
-			}, App.Current.Dispatcher)
+			var timer = new DispatcherTimer(new TimeSpan(0, 0, 1), DispatcherPriority.Normal, (_, __) => time.Text = $"{seconds--}", App.Current.Dispatcher)
 			{ IsEnabled = false };
 			timer.Start();
 			#endregion
-
 
 			IncreaseVolume();
 			Util.MuteApp(true, "msedge", "chrome", "mpc-be64");
@@ -79,7 +71,9 @@ namespace PCLauncher
 		{
 			if (e is not form.KeyEventArgs k ||
 			(
-				(k.KeyCode & form.Keys.VolumeUp) != form.Keys.VolumeUp && (k.KeyCode & form.Keys.VolumeDown) != form.Keys.VolumeDown
+				(k.KeyCode & form.Keys.VolumeUp) != form.Keys.VolumeUp
+				&& (k.KeyCode & form.Keys.VolumeDown) != form.Keys.VolumeDown
+				&& (k.KeyCode & form.Keys.MediaPlayPause) != form.Keys.MediaPlayPause
 			)) cancelClosing.Cancel();
 		}
 
@@ -137,8 +131,9 @@ namespace PCLauncher
 
 			UpdateAlarmTime();
 			Util.WakePC(alarmTime);
-			Task.Delay(1).ContinueWith(_ => SetAlarm());
 			new Alarm(false).Show();
+			await Task.Yield();
+			SetAlarm();
 		}
 
 

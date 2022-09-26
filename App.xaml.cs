@@ -1,9 +1,7 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Windows;
-using System.Windows.Interop;
+﻿using System.IO;
 using System.Windows.Threading;
+using Windows.Devices.Bluetooth;
+using Windows.Devices.Enumeration;
 
 
 namespace PCLauncher
@@ -11,7 +9,7 @@ namespace PCLauncher
 	public partial class App : Application
 	{
 		public static readonly string PATH = AppDomain.CurrentDomain.BaseDirectory;
-		private void Application_Startup(object sender, StartupEventArgs e)
+		private async void Application_Startup(object sender, StartupEventArgs e)
 		{
 			if (File.Exists($"{PATH}ERROR.txt")) File.Delete($"{PATH}ERROR.txt");
 			$"{PATH}CONFIG.txt".ReadConfig<App>();

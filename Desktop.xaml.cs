@@ -1,22 +1,14 @@
 ﻿using Gma.System.MouseKeyHook;
 using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
-using System.Net.Http.Headers;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Enumeration;
-using Windows.System.Power;
 using form = System.Windows.Forms;
 
 
@@ -31,7 +23,7 @@ namespace PCLauncher
 		{
 			instance = this;
 			InitializeComponent();
-			soundKb = new SoundPlayer($"{App.PATH}Resources/error.wav");
+			soundKb = new($"{App.PATH}Resources/error.wav");
 			soundKb.LoadAsync();
 
 			#region Gắn hình ảnh cho Icon
@@ -47,8 +39,8 @@ namespace PCLauncher
 			#region Kết nối Bluetooth và chuyển đổi loa
 			App.SystemSpeaker = string.IsNullOrEmpty(App.SystemSpeaker) ? "" : App.SystemSpeaker.Trim();
 			App.Headphone = string.IsNullOrEmpty(App.Headphone) ? "" : App.Headphone.Trim();
-			if (App.SystemSpeaker.Length == 0 || App.Headphone.Length == 0) switchSpeaker.Visibility = Visibility.Hidden;
-			try { bluetoothMAC = Util.ConvertMACAddress(App.AutoConnectBluetoothMAC); } catch { }
+			if (App.SystemSpeaker.Length == 0 || App.Headphone.Length == 0) switchSpeaker.Visibility = Visibility.Collapsed;
+			try { bluetoothMAC = App.AutoConnectBluetoothMAC.ToMACAddress(); } catch { }
 			if (bluetoothMAC > 0) ConnectBluetoothThenSwitchSpeaker();
 			else if (switchSpeaker.Visibility == Visibility.Visible)
 			{
@@ -313,7 +305,7 @@ namespace PCLauncher
 		private static readonly DispatcherTimer iconTimer = new(new TimeSpan(0, 0, 1), DispatcherPriority.Background, (_, __) =>
 		{
 			if (++iconTime < 5) return;
-			instance.iconGrid.Visibility = Visibility.Collapsed;
+			instance.calendar.Visibility = instance.iconGrid.Visibility = Visibility.Collapsed;
 			iconTimer.Stop();
 		}, App.Current.Dispatcher)
 		{
@@ -322,22 +314,22 @@ namespace PCLauncher
 		};
 
 
-		private static void AutoHideIcon(bool active)
+		private static void AutoHideIcon(bool enable)
 		{
-			if (iconTimer.IsEnabled == active) return;
-			iconTimer.IsEnabled = active;
+			if (iconTimer.IsEnabled == enable) return;
+			iconTimer.IsEnabled = enable;
 			iconTime = 0;
 
-			if (active)
+			if (enable)
 			{
-				instance.iconGrid.Visibility = Visibility.Visible;
+				instance.calendar.Visibility = instance.iconGrid.Visibility = Visibility.Visible;
 				mouseKeyHook.KeyDown += OnMouseKeyEvents;
 				mouseKeyHook.MouseMove += OnMouseKeyEvents;
 				mouseKeyHook.MouseDown += OnMouseKeyEvents;
 			}
 			else
 			{
-				instance.iconGrid.Visibility = Visibility.Collapsed;
+				instance.calendar.Visibility = instance.iconGrid.Visibility = Visibility.Collapsed;
 				mouseKeyHook.KeyDown -= OnMouseKeyEvents;
 				mouseKeyHook.MouseMove -= OnMouseKeyEvents;
 				mouseKeyHook.MouseDown -= OnMouseKeyEvents;
@@ -347,7 +339,7 @@ namespace PCLauncher
 			static void OnMouseKeyEvents(object? sender, EventArgs arg)
 			{
 				iconTime = 0;
-				instance.iconGrid.Visibility = Visibility.Visible;
+				instance.calendar.Visibility = instance.iconGrid.Visibility = Visibility.Visible;
 				if (!iconTimer.IsEnabled) iconTimer.IsEnabled = true;
 			}
 		}
@@ -430,7 +422,7 @@ namespace PCLauncher
 					{
 						if (uris.Count != 0)
 						{
-							var token = (cts = new CancellationTokenSource()).Token;
+							var token = (cts = new()).Token;
 							Task.Run(async () => { try { await Show(token); } catch (OperationCanceledException) { } });
 						}
 					}
@@ -445,7 +437,6 @@ namespace PCLauncher
 			}
 
 
-			#region Show
 			private static CancellationTokenSource cts;
 			private static readonly List<string> IMAGE_EXTENSIONS = new()
 			{
@@ -472,14 +463,11 @@ namespace PCLauncher
 
 				#region Tuần tự hình nền
 				while (true)
-				{
-					do
+					for (index = 0; index < uris.Count; ++index)
 					{
 						UpdateWallpaper();
 						await Task.Delay(App.WallpaperDelay, token);
-					} while (++index < uris.Count);
-					index = 0;
-				}
+					}
 				#endregion
 
 
@@ -506,7 +494,7 @@ namespace PCLauncher
 						{
 							if (!desktop.IsActive) return;
 							cts?.Dispose();
-							token = (cts = new CancellationTokenSource()).Token;
+							token = (cts = new()).Token;
 							Task.Run(async () => { try { await Show(token); } catch (OperationCanceledException) { } });
 						});
 						throw new OperationCanceledException();
@@ -516,23 +504,15 @@ namespace PCLauncher
 					App.Current.Dispatcher.Invoke(() => { if (desktop.IsActive) desktop.wallPaper.Source = image; });
 				}
 			}
-			#endregion
 		}
 
 
 		#region Clock and Calendar
-		private static readonly SolidColorBrush[] rainBow =
-			{ new SolidColorBrush(Colors.Red), new SolidColorBrush(Colors.Orange), new SolidColorBrush(Colors.Yellow),
-			new SolidColorBrush(Colors.Green), new SolidColorBrush(Colors.Blue), new SolidColorBrush(Colors.Indigo),
-			new SolidColorBrush(Colors.Violet) };
-		private static int rainBowIndex;
 		private static readonly DispatcherTimer clockTimer = new(new TimeSpan(0, 0, 1), DispatcherPriority.Normal, (_, __) =>
 		{
 			var time = DateTime.Now;
 			if (time.Day != cacheDate.Day) instance.CalendarGotoNow();
 			instance.clock.Text = $"{(time.Hour == 0 ? 12 : time.Hour < 13 ? time.Hour : time.Hour - 12)} : {time.Minute:00} : {time.Second:00}";
-			instance.clock.Foreground = rainBow[rainBowIndex++];
-			if (rainBowIndex >= rainBow.Length) rainBowIndex = 0;
 		}, App.Current.Dispatcher)
 		{
 			IsEnabled = false
@@ -559,22 +539,31 @@ namespace PCLauncher
 
 		private async void Click_SwitchSpeaker(object _, RoutedEventArgs __)
 		{
-			switchSpeaker.Visibility = Visibility.Hidden;
+			switchSpeaker.Visibility = Visibility.Collapsed;
+			currentSpeaker = currentSpeaker == App.SystemSpeaker ? App.Headphone : App.SystemSpeaker;
 			info.Arguments = "";
 			info.RedirectStandardOutput = true;
-			string output = Process.Start(info).StandardOutput.ReadToEnd();
-			await Task.Delay(500);
-			var lines = output.Split("\r\n");
-			currentSpeaker = currentSpeaker == App.SystemSpeaker ? App.Headphone : App.SystemSpeaker;
+			string[] lines = null;
+
+			// Lấy thông tin loa
+			for (int i = 0; i < 10; ++i)
+			{
+				var p = Process.Start(info);
+				string output = p.StandardOutput.ReadToEnd();
+				await p.WaitForExitAsync();
+				if ((lines = output.Split("\r\n")).Length >= 4) break;
+				await Task.Delay(500);
+			}
+
+			// Chuyển loa
+			info.RedirectStandardOutput = false;
 			for (int i = lines.Length - 2; i >= 0; --i)
 				if (lines[i].Split(':')[1].Trim() == currentSpeaker)
 				{
 					info.Arguments = $"{i + 1}";
-					info.RedirectStandardOutput = false;
-					Process.Start(info);
 					speakerImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/" +
 						$"{(currentSpeaker == App.SystemSpeaker ? "SystemSpeaker" : "Headphone")}.png"));
-					await Task.Delay(500);
+					await Process.Start(info).WaitForExitAsync();
 					break;
 				}
 			switchSpeaker.Visibility = Visibility.Visible;
@@ -588,20 +577,26 @@ namespace PCLauncher
 			ctsBluetooth.Cancel();
 			ctsBluetooth.Dispose();
 			var token = (ctsBluetooth = new()).Token;
-			using var b = await BluetoothDevice.FromBluetoothAddressAsync(bluetoothMAC);
-			if (token.IsCancellationRequested) return;
-			if (b != null)
+			var state = switchSpeaker.Visibility;
+			switchSpeaker.Visibility = Visibility.Collapsed;
+			BluetoothDevice b = null;
+			for (int i = 0; i < 3 && (b = await BluetoothDevice.FromBluetoothAddressAsync(bluetoothMAC)) == null && !token.IsCancellationRequested; ++i)
+				await Task.Delay(500);
+
+			using (b)
 			{
-				await b.DeviceInformation.Pairing.UnpairAsync();
 				if (token.IsCancellationRequested) return;
-				b.DeviceInformation.Pairing.Custom.PairingRequested += (_, args) => args.Accept();
-				await b.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
-				if (token.IsCancellationRequested) return;
-				await Task.Delay(1000);
-				if (token.IsCancellationRequested) return;
+				if (b != null)
+				{
+					await b.DeviceInformation.Pairing.UnpairAsync();
+					if (token.IsCancellationRequested) return;
+					b.DeviceInformation.Pairing.Custom.PairingRequested += (_, args) => args.Accept();
+					await b.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
+					if (token.IsCancellationRequested) return;
+				}
 			}
 
-			if (switchSpeaker.Visibility == Visibility.Hidden) return;
+			if (state != Visibility.Visible) return;
 			currentSpeaker = App.Headphone;
 			Click_SwitchSpeaker(null, null);
 		}
